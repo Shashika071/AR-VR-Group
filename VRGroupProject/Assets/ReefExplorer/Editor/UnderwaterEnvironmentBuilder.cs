@@ -47,7 +47,6 @@ namespace ReefExplorer.EditorTools
 
         static readonly string[] PlantPaths =
         {
-            // Ferns_01_Version_02.obj is ~299MB — keep local only (gitignored), not in PlantPaths.
             "Assets/Plants/Aquarium_Anacharis_Plant.obj",
         };
 

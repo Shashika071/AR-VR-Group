@@ -28,7 +28,3 @@ MemoryCaptures/
 
 .DS_Store
 Thumbs.db
-
-# Too large for GitHub (100MB limit). Keep local for Unity; do not push.
-Assets/Plants/Ferns_01_Version_02.obj
-Assets/Plants/Ferns_01_Version_02.obj.meta
