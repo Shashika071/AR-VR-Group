@@ -25,7 +25,6 @@ namespace ReefExplorer.Interaction
             UpgradeScanner();
             UpgradeBottle();
             UpgradeBuoy();
-            // Animals: CuteFishRuntimeLoader replaces these with FBX models shortly after.
             UpgradeAnimals();
         }
 
@@ -199,11 +198,6 @@ namespace ReefExplorer.Interaction
         {
             var go = GameObject.Find(name);
             if (go == null)
-                return;
-            // Keep imported FBX / stylized visuals if already applied.
-            if (go.transform.Find("CuteFishModel") != null)
-                return;
-            if (go.transform.Find("OceanModel") != null)
                 return;
             if (go.transform.Find("Visual") != null)
                 return;

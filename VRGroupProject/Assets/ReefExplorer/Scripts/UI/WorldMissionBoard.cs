@@ -62,7 +62,7 @@ namespace ReefExplorer.UI
             {
                 resultsText.text +=
                     "\n\nCredits: Student team project. Unity URP + XR Interaction Toolkit + OpenXR. " +
-                    "Fish models: Cute Fish Pack by Quaternius (CC0).";
+                    "Environment and animals use coursework primitives.";
             }
         }
 
