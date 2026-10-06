@@ -423,18 +423,12 @@ namespace ReefExplorer.EditorTools
                     }
                     else
                     {
-                        var plant = ProceduralReefMeshes.CreateSeaPlant($"CarpetPlant_{n}", parent, p, mats.plant);
-                        if (plant.GetComponent<SeaPlantSway>() == null)
-                            plant.AddComponent<SeaPlantSway>();
-                        SetCheapRender(plant);
-                        // Second plant nearby so clumps look fuller.
+                        // Real Anacharis — upright green fronds (not flat on sand).
+                        PlaceOnePlant(parent, p, mats, preferReal: true);
                         if (kind == 3)
                         {
                             var p2 = p + new Vector3(Random.Range(0.3f, 0.7f), 0f, Random.Range(-0.4f, 0.4f));
-                            var plant2 = ProceduralReefMeshes.CreateSeaPlant($"CarpetPlantB_{n}", parent, p2, mats.plant);
-                            if (plant2.GetComponent<SeaPlantSway>() == null)
-                                plant2.AddComponent<SeaPlantSway>();
-                            SetCheapRender(plant2);
+                            PlaceOnePlant(parent, p2, mats, preferReal: true);
                         }
                     }
                 }
@@ -471,10 +465,7 @@ namespace ReefExplorer.EditorTools
                     }
                     else
                     {
-                        var plant = ProceduralReefMeshes.CreateSeaPlant($"DensePlant_{n}", parent, p, mats.plant);
-                        if (plant.GetComponent<SeaPlantSway>() == null)
-                            plant.AddComponent<SeaPlantSway>();
-                        SetCheapRender(plant);
+                        PlaceOnePlant(parent, p, mats, preferReal: true);
                     }
                 }
             }
@@ -503,20 +494,17 @@ namespace ReefExplorer.EditorTools
                 new Vector3(5f, 0f, 10f),
             };
             foreach (var c in plantSpots)
-                PlaceSeagrassBand(parent, c, mats, count: 8);
+                PlaceSeagrassBand(parent, c, mats, count: 12);
 
-            // Extra plant rings around the whole arena (fake plants only — light).
-            for (var i = 0; i < 16; i++)
+            // Extra upright Anacharis around the arena.
+            for (var i = 0; i < 22; i++)
             {
-                var a = (i / 16f) * Mathf.PI * 2f;
+                var a = (i / 22f) * Mathf.PI * 2f;
                 var d = 6.5f + (i % 3) * 2.5f;
                 var p = new Vector3(Mathf.Cos(a) * d, 0f, 10f + Mathf.Sin(a) * d * 0.85f);
                 if (p.z < 3.5f && Mathf.Abs(p.x) < 2f)
                     continue;
-                var plant = ProceduralReefMeshes.CreateSeaPlant($"ArenaPlant_{i}", parent, p, mats.plant);
-                if (plant.GetComponent<SeaPlantSway>() == null)
-                    plant.AddComponent<SeaPlantSway>();
-                SetCheapRender(plant);
+                PlaceOnePlant(parent, p, mats, preferReal: true);
             }
 
             var fishSpots = new[]
@@ -558,10 +546,7 @@ namespace ReefExplorer.EditorTools
                 }
                 else
                 {
-                    var plant = ProceduralReefMeshes.CreateSeaPlant($"CentrePlant_{i}", parent, p, mats.plant);
-                    if (plant.GetComponent<SeaPlantSway>() == null)
-                        plant.AddComponent<SeaPlantSway>();
-                    SetCheapRender(plant);
+                    PlaceOnePlant(parent, p, mats, preferReal: true);
                 }
             }
 
@@ -596,10 +581,7 @@ namespace ReefExplorer.EditorTools
                     }
                     else
                     {
-                        var plant = ProceduralReefMeshes.CreateSeaPlant($"MidPlant_{i}_{j}", parent, p, mats.plant);
-                        if (plant.GetComponent<SeaPlantSway>() == null)
-                            plant.AddComponent<SeaPlantSway>();
-                        SetCheapRender(plant);
+                        PlaceOnePlant(parent, p, mats, preferReal: true);
                     }
                 }
             }
@@ -790,34 +772,68 @@ namespace ReefExplorer.EditorTools
                     side * Random.Range(1.1f, 3.0f),
                     0f,
                     Random.Range(-2.4f, 2.4f));
-                PlaceOnePlant(parent, p, mats, preferReal: i % 2 == 0);
+                PlaceOnePlant(parent, p, mats, preferReal: true);
             }
         }
 
         static void PlaceOnePlant(Transform parent, Vector3 p, MatBag mats, bool preferReal)
         {
             GameObject plant = null;
-            if (preferReal)
+            if (preferReal && PlantPaths.Length > 0)
             {
                 var path = PlantPaths[Random.Range(0, PlantPaths.Length)];
-                if (TrySpawnModel(parent, path, p, Random.Range(0.7f, 1.2f), mats.plant, forceMaterial: false))
+                if (TrySpawnModel(parent, path, p, Random.Range(0.55f, 0.95f), mats.plant, forceMaterial: false))
+                {
                     plant = parent.GetChild(parent.childCount - 1).gameObject;
+                    OrientPlantUpright(plant);
+                }
             }
 
             if (plant == null)
                 plant = ProceduralReefMeshes.CreateSeaPlant($"FakePlant_{p.x:0}_{p.z:0}", parent, p, mats.plant);
 
-            // When real succeeded, still add a fake blade clump nearby for fill.
-            if (preferReal && plant != null && plant.name.EndsWith("_Env") && Random.value < 0.5f)
+            // Extra upright Anacharis nearby for denser beds.
+            if (preferReal && plant != null && plant.name.EndsWith("_Env") && Random.value < 0.65f)
             {
-                var side = p + new Vector3(Random.Range(-0.4f, 0.4f), 0f, Random.Range(-0.4f, 0.4f));
-                var fake = ProceduralReefMeshes.CreateSeaPlant($"FakePlant_{side.x:0}_{side.z:0}", parent, side, mats.plant);
-                if (fake.GetComponent<SeaPlantSway>() == null)
-                    fake.AddComponent<SeaPlantSway>();
+                var side = p + new Vector3(Random.Range(-0.55f, 0.55f), 0f, Random.Range(-0.55f, 0.55f));
+                if (TrySpawnModel(parent, PlantPaths[0], side, Random.Range(0.5f, 0.85f), mats.plant, forceMaterial: false))
+                {
+                    var twin = parent.GetChild(parent.childCount - 1).gameObject;
+                    OrientPlantUpright(twin);
+                    if (twin.GetComponent<SeaPlantSway>() == null)
+                        twin.AddComponent<SeaPlantSway>();
+                }
             }
 
             if (plant != null && plant.GetComponent<SeaPlantSway>() == null)
                 plant.AddComponent<SeaPlantSway>();
+        }
+
+        /// <summary>Anacharis OBJ is authored flat — tip it up so fronds stand vertical.</summary>
+        static void OrientPlantUpright(GameObject plant)
+        {
+            if (plant == null)
+                return;
+
+            var yaw = Random.Range(0f, 360f);
+            plant.transform.rotation = Quaternion.Euler(-90f, yaw, 0f);
+
+            // If still wider than tall, flip the other way.
+            var rends = plant.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0)
+                return;
+            var b = rends[0].bounds;
+            for (var i = 1; i < rends.Length; i++)
+                b.Encapsulate(rends[i].bounds);
+            if (b.size.y + 0.05f < Mathf.Max(b.size.x, b.size.z))
+                plant.transform.rotation = Quaternion.Euler(90f, yaw, 0f);
+
+            // Sit roots on the sand after rotation.
+            var b2 = rends[0].bounds;
+            for (var i = 1; i < rends.Length; i++)
+                b2.Encapsulate(rends[i].bounds);
+            var lift = -b2.min.y;
+            plant.transform.position += Vector3.up * (lift + 0.02f);
         }
 
         static void PlaceFishSchool(Transform parent, Vector3 center, int count)
