@@ -421,15 +421,17 @@ namespace ReefExplorer.EditorTools
                     {
                         PlaceOneCoral(parent, p, mats, preferReal: false);
                     }
+                    else if (kind == 2)
+                    {
+                        var plant = ProceduralReefMeshes.CreateSeaPlant($"CarpetPlant_{n}", parent, p, mats.plant);
+                        if (plant.GetComponent<SeaPlantSway>() == null)
+                            plant.AddComponent<SeaPlantSway>();
+                        SetCheapRender(plant);
+                    }
                     else
                     {
-                        // Real Anacharis — upright green fronds (not flat on sand).
+                        // Fewer real Anacharis (was too dense).
                         PlaceOnePlant(parent, p, mats, preferReal: true);
-                        if (kind == 3)
-                        {
-                            var p2 = p + new Vector3(Random.Range(0.3f, 0.7f), 0f, Random.Range(-0.4f, 0.4f));
-                            PlaceOnePlant(parent, p2, mats, preferReal: true);
-                        }
                     }
                 }
             }
@@ -463,9 +465,16 @@ namespace ReefExplorer.EditorTools
                         rock.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                         SetCheapRender(rock);
                     }
-                    else
+                    else if (kind == 1)
                     {
                         PlaceOnePlant(parent, p, mats, preferReal: true);
+                    }
+                    else
+                    {
+                        var plant = ProceduralReefMeshes.CreateSeaPlant($"DensePlant_{n}", parent, p, mats.plant);
+                        if (plant.GetComponent<SeaPlantSway>() == null)
+                            plant.AddComponent<SeaPlantSway>();
+                        SetCheapRender(plant);
                     }
                 }
             }
@@ -494,13 +503,13 @@ namespace ReefExplorer.EditorTools
                 new Vector3(5f, 0f, 10f),
             };
             foreach (var c in plantSpots)
-                PlaceSeagrassBand(parent, c, mats, count: 12);
+                PlaceSeagrassBand(parent, c, mats, count: 5);
 
-            // Extra upright Anacharis around the arena.
-            for (var i = 0; i < 22; i++)
+            // Light ring of upright Anacharis (not crowded).
+            for (var i = 0; i < 8; i++)
             {
-                var a = (i / 22f) * Mathf.PI * 2f;
-                var d = 6.5f + (i % 3) * 2.5f;
+                var a = (i / 8f) * Mathf.PI * 2f;
+                var d = 7.5f + (i % 2) * 2.0f;
                 var p = new Vector3(Mathf.Cos(a) * d, 0f, 10f + Mathf.Sin(a) * d * 0.85f);
                 if (p.z < 3.5f && Mathf.Abs(p.x) < 2f)
                     continue;
@@ -546,7 +555,8 @@ namespace ReefExplorer.EditorTools
                 }
                 else
                 {
-                    PlaceOnePlant(parent, p, mats, preferReal: true);
+                    // Only every other centre plant is real Anacharis.
+                    PlaceOnePlant(parent, p, mats, preferReal: i % 2 == 0);
                 }
             }
 
@@ -581,7 +591,7 @@ namespace ReefExplorer.EditorTools
                     }
                     else
                     {
-                        PlaceOnePlant(parent, p, mats, preferReal: true);
+                        PlaceOnePlant(parent, p, mats, preferReal: j == 1);
                     }
                 }
             }
@@ -782,58 +792,72 @@ namespace ReefExplorer.EditorTools
             if (preferReal && PlantPaths.Length > 0)
             {
                 var path = PlantPaths[Random.Range(0, PlantPaths.Length)];
-                if (TrySpawnModel(parent, path, p, Random.Range(0.55f, 0.95f), mats.plant, forceMaterial: false))
+                if (TrySpawnModel(parent, path, p, Random.Range(0.5f, 0.8f), mats.plant, forceMaterial: false))
                 {
                     plant = parent.GetChild(parent.childCount - 1).gameObject;
-                    OrientPlantUpright(plant);
+                    OrientPlantUpright(plant, p);
                 }
             }
 
             if (plant == null)
                 plant = ProceduralReefMeshes.CreateSeaPlant($"FakePlant_{p.x:0}_{p.z:0}", parent, p, mats.plant);
 
-            // Extra upright Anacharis nearby for denser beds.
-            if (preferReal && plant != null && plant.name.EndsWith("_Env") && Random.value < 0.65f)
-            {
-                var side = p + new Vector3(Random.Range(-0.55f, 0.55f), 0f, Random.Range(-0.55f, 0.55f));
-                if (TrySpawnModel(parent, PlantPaths[0], side, Random.Range(0.5f, 0.85f), mats.plant, forceMaterial: false))
-                {
-                    var twin = parent.GetChild(parent.childCount - 1).gameObject;
-                    OrientPlantUpright(twin);
-                    if (twin.GetComponent<SeaPlantSway>() == null)
-                        twin.AddComponent<SeaPlantSway>();
-                }
-            }
-
             if (plant != null && plant.GetComponent<SeaPlantSway>() == null)
                 plant.AddComponent<SeaPlantSway>();
         }
 
-        /// <summary>Anacharis OBJ is authored flat — tip it up so fronds stand vertical.</summary>
-        static void OrientPlantUpright(GameObject plant)
+        /// <summary>Anacharis OBJ lies flat — rotate so fronds grow UP from the sand.</summary>
+        static void OrientPlantUpright(GameObject plant, Vector3 groundPos)
         {
             if (plant == null)
                 return;
 
             var yaw = Random.Range(0f, 360f);
-            plant.transform.rotation = Quaternion.Euler(-90f, yaw, 0f);
-
-            // If still wider than tall, flip the other way.
             var rends = plant.GetComponentsInChildren<Renderer>();
             if (rends.Length == 0)
-                return;
-            var b = rends[0].bounds;
-            for (var i = 1; i < rends.Length; i++)
-                b.Encapsulate(rends[i].bounds);
-            if (b.size.y + 0.05f < Mathf.Max(b.size.x, b.size.z))
+            {
                 plant.transform.rotation = Quaternion.Euler(90f, yaw, 0f);
+                plant.transform.position = groundPos;
+                return;
+            }
 
-            // Sit roots on the sand after rotation.
-            var b2 = rends[0].bounds;
+            // Pick the pitch where most of the mesh sits ABOVE the root (not hanging down).
+            float BestScore(Quaternion rot)
+            {
+                plant.transform.rotation = rot;
+                var b = rends[0].bounds;
+                for (var i = 1; i < rends.Length; i++)
+                    b.Encapsulate(rends[i].bounds);
+                // Prefer tall plants with centre above the ground point.
+                return (b.center.y - groundPos.y) + b.size.y * 0.35f;
+            }
+
+            var candidates = new[]
+            {
+                Quaternion.Euler(90f, yaw, 0f),
+                Quaternion.Euler(-90f, yaw, 0f),
+                Quaternion.Euler(0f, yaw, 90f),
+                Quaternion.Euler(0f, yaw, -90f),
+            };
+
+            var best = candidates[0];
+            var bestScore = float.NegativeInfinity;
+            foreach (var rot in candidates)
+            {
+                var score = BestScore(rot);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = rot;
+                }
+            }
+
+            plant.transform.rotation = best;
+            plant.transform.position = groundPos;
+            var bounds = rends[0].bounds;
             for (var i = 1; i < rends.Length; i++)
-                b2.Encapsulate(rends[i].bounds);
-            var lift = -b2.min.y;
-            plant.transform.position += Vector3.up * (lift + 0.02f);
+                bounds.Encapsulate(rends[i].bounds);
+            plant.transform.position = groundPos + Vector3.up * (-bounds.min.y + 0.02f);
         }
 
         static void PlaceFishSchool(Transform parent, Vector3 center, int count)
