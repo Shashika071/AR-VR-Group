@@ -1,49 +1,55 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 
 namespace ReefExplorer.UI
 {
     /// <summary>
-    /// Fixes mirrored / hard-to-read world-space mission board text at runtime.
+    /// Mounts MissionCanvas flat on the station board so it is never half-clipped
+    /// or mirrored. Does not billboard the board (that was clipping into MissionBoard).
     /// </summary>
     public sealed class WorldUiClarityFix : MonoBehaviour
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Apply()
         {
+            if (GameObject.Find("ResearchStation") == null)
+                return;
+
             var canvasGo = GameObject.Find("MissionCanvas");
             if (canvasGo == null)
                 return;
 
-            // Board is on the station wall at -Z; rotate so text faces the player.
+            // Billboard on the board yaws the plane into MissionBoard → half UI missing.
+            var face = canvasGo.GetComponent<FaceCameraLabel>();
+            if (face != null)
+                Object.Destroy(face);
+
+            var s = Mathf.Abs(canvasGo.transform.localScale.x);
+            if (s < 0.001f)
+                s = 0.0022f;
+            canvasGo.transform.localScale = Vector3.one * s;
+
+            // Fixed mount on the back wall. Y=180 = readable World Space UI toward the station.
+            canvasGo.transform.position = new Vector3(0f, 1.75f, -2.88f);
             canvasGo.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            if (canvasGo.transform.localScale.x < 0.0018f)
-                canvasGo.transform.localScale = Vector3.one * 0.002f;
+
+            // Keep MissionBoard as a dark frame, but push it behind the canvas.
+            var board = GameObject.Find("MissionBoard");
+            if (board != null)
+            {
+                board.transform.position = new Vector3(0f, 1.75f, -3.05f);
+                var col = board.GetComponent<Collider>();
+                if (col != null)
+                    col.enabled = false;
+            }
 
             var canvas = canvasGo.GetComponent<Canvas>();
             if (canvas != null && Camera.main != null)
                 canvas.worldCamera = Camera.main;
 
-            // Default to mouse UI; PlayerModeSelector re-enables tracked raycaster for XR.
             var tracked = canvasGo.GetComponent<TrackedDeviceGraphicRaycaster>();
             if (tracked != null)
                 tracked.enabled = false;
-
-            foreach (var text in canvasGo.GetComponentsInChildren<Text>(true))
-            {
-                text.color = Color.white;
-                text.horizontalOverflow = HorizontalWrapMode.Wrap;
-                text.verticalOverflow = VerticalWrapMode.Overflow;
-                if (text.fontSize < 22)
-                    text.fontSize = 22;
-            }
-
-            foreach (var image in canvasGo.GetComponentsInChildren<Image>(true))
-            {
-                if (image.gameObject.name == "Panel")
-                    image.color = new Color(0.03f, 0.12f, 0.18f, 0.96f);
-            }
         }
     }
 }

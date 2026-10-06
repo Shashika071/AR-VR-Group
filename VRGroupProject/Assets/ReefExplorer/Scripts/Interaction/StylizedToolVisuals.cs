@@ -201,6 +201,9 @@ namespace ReefExplorer.Interaction
                 return;
             if (go.transform.Find("Visual") != null)
                 return;
+            // Procedural animals already have Body / Shell / Wing parts.
+            if (go.transform.Find("Body") != null || go.transform.Find("Shell") != null || go.transform.Find("Wing") != null)
+                return;
 
             var rootRenderer = go.GetComponent<MeshRenderer>();
             if (rootRenderer != null)
@@ -409,6 +412,9 @@ namespace ReefExplorer.Interaction
         }
     }
 
+    /// <summary>
+    /// Tool floating labels. Same facing math as FaceCameraLabel (kept for existing scenes).
+    /// </summary>
     public sealed class BillboardLabel : MonoBehaviour
     {
         void LateUpdate()
@@ -416,7 +422,13 @@ namespace ReefExplorer.Interaction
             var cam = Camera.main;
             if (cam == null)
                 return;
-            transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
+
+            var away = transform.position - cam.transform.position;
+            if (away.sqrMagnitude < 0.0001f)
+                return;
+
+            transform.rotation = Quaternion.LookRotation(away.normalized, Vector3.up);
         }
     }
 }
+

@@ -45,23 +45,30 @@ namespace ReefExplorer.EditorTools
             var mats = EnsureMaterials();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            // Underwater atmosphere — no ordinary sky / sharp horizon.
+            RenderSettings.skybox = null;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.028f;
-            RenderSettings.fogColor = new Color(0.04f, 0.26f, 0.36f);
+            RenderSettings.fogDensity = 0.035f;
+            RenderSettings.fogColor = new Color(0.02f, 0.22f, 0.32f);
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.1f, 0.26f, 0.34f);
+            RenderSettings.ambientLight = new Color(0.08f, 0.22f, 0.3f);
 
             CreateLight();
             var systems = CreateSystems(species, baseline);
             var station = CreateStation(mats);
+            // Marker so runtime spreader does not re-scatter props into old cube style.
+            new GameObject("ReefVisuals_v2");
             CreateSeabed(mats);
             CreateZonesAndAnimals(mats, species);
+            CreateMonitoringBuoy(mats);
             CreateTools(mats, station);
             CreateTutorialProps(mats);
             CreatePlayers(systems.modeSelector);
             CreateUi(systems.mission, systems.modeSelector, systems.audioHub);
             CreateParticles();
+            var atmo = new GameObject("UnderwaterAtmosphere");
+            atmo.AddComponent<UnderwaterAtmosphere>();
 
             Directory.CreateDirectory("Assets/ReefExplorer/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -141,7 +148,13 @@ namespace ReefExplorer.EditorTools
             var so = new SerializedObject(asset);
             so.FindProperty("speciesId").stringValue = id;
             so.FindProperty("displayName").stringValue = display;
-            so.FindProperty("description").stringValue = $"{display} used for the educational reef survey.";
+            so.FindProperty("description").stringValue = display switch
+            {
+                "Clownfish" => "Clownfish live among anemones that protect them from predators.",
+                "Sea Turtle" => "Sea turtles migrate long distances and often return to nesting beaches.",
+                "Ray" => "Many rays glide just above sand, using fins like underwater wings.",
+                _ => $"{display} used for the educational reef survey."
+            };
             so.FindProperty("accentColor").colorValue = color;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(asset);
@@ -152,14 +165,14 @@ namespace ReefExplorer.EditorTools
         {
             return new MaterialBag
             {
-                sand = EnsureMaterial("Mat_Sand", new Color(0.76f, 0.68f, 0.45f)),
-                coral = EnsureMaterial("Mat_Coral", new Color(0.85f, 0.35f, 0.4f)),
-                rock = EnsureMaterial("Mat_Rock", new Color(0.35f, 0.4f, 0.42f)),
-                plant = EnsureMaterial("Mat_Plant", new Color(0.15f, 0.55f, 0.35f)),
-                metal = EnsureMaterial("Mat_Metal", new Color(0.35f, 0.45f, 0.5f)),
-                accent = EnsureMaterial("Mat_Accent", new Color(1f, 0.62f, 0.25f)),
-                waterPanel = EnsureMaterial("Mat_Panel", new Color(0.08f, 0.22f, 0.3f)),
-                clown = EnsureMaterial("Mat_Clown", new Color(1f, 0.55f, 0.15f)),
+                sand = EnsureMaterial("Mat_Sand", new Color(0.82f, 0.72f, 0.48f)),
+                coral = EnsureMaterial("Mat_Coral", new Color(0.9f, 0.32f, 0.45f)),
+                rock = EnsureMaterial("Mat_Rock", new Color(0.42f, 0.4f, 0.38f)),
+                plant = EnsureMaterial("Mat_Plant", new Color(0.18f, 0.62f, 0.38f)),
+                metal = EnsureMaterial("Mat_Metal", new Color(0.4f, 0.48f, 0.52f)),
+                accent = EnsureMaterial("Mat_Accent", new Color(1f, 0.55f, 0.2f)),
+                waterPanel = EnsureMaterial("Mat_Panel", new Color(0.06f, 0.2f, 0.28f)),
+                clown = EnsureMaterial("Mat_Clown", new Color(1f, 0.5f, 0.12f)),
                 turtle = EnsureMaterial("Mat_Turtle", new Color(0.25f, 0.65f, 0.35f)),
                 ray = EnsureMaterial("Mat_Ray", new Color(0.4f, 0.5f, 0.65f)),
                 scanner = EnsureMaterial("Mat_Scanner", new Color(0.2f, 0.75f, 0.85f)),
@@ -198,9 +211,17 @@ namespace ReefExplorer.EditorTools
             var lightGo = new GameObject("Directional Light");
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.color = new Color(0.55f, 0.8f, 0.95f);
-            light.intensity = 1.1f;
-            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            light.color = new Color(0.45f, 0.75f, 0.9f);
+            light.intensity = 0.85f;
+            light.shadows = LightShadows.Soft;
+            lightGo.transform.rotation = Quaternion.Euler(65f, -25f, 0f);
+
+            var fill = new GameObject("Fill Light");
+            var fillLight = fill.AddComponent<Light>();
+            fillLight.type = LightType.Directional;
+            fillLight.color = new Color(0.2f, 0.45f, 0.55f);
+            fillLight.intensity = 0.35f;
+            fill.transform.rotation = Quaternion.Euler(20f, 140f, 0f);
         }
 
         sealed class Systems
@@ -269,38 +290,48 @@ namespace ReefExplorer.EditorTools
             var station = new GameObject("ResearchStation");
             station.transform.position = Vector3.zero;
 
-            CreateCube("Deck", station.transform, new Vector3(0f, 0.05f, 0f), new Vector3(6f, 0.1f, 6f), mats.metal);
-            CreateCube("BackWall", station.transform, new Vector3(0f, 1.5f, -2.8f), new Vector3(6f, 3f, 0.2f), mats.metal);
-            CreateCube("LeftWall", station.transform, new Vector3(-2.9f, 1.2f, 0f), new Vector3(0.2f, 2.4f, 5.5f), mats.metal);
-            CreateCube("Console", station.transform, new Vector3(0f, 0.9f, -1.8f), new Vector3(2.2f, 0.15f, 0.8f), mats.accent);
+            CreateCube("Deck", station.transform, new Vector3(0f, 0.05f, 0f), new Vector3(7f, 0.12f, 7f), mats.metal);
+            CreateCube("DeckRim", station.transform, new Vector3(0f, 0.12f, 3.4f), new Vector3(7f, 0.08f, 0.2f), mats.accent);
+            CreateCube("BackWall", station.transform, new Vector3(0f, 1.6f, -3.2f), new Vector3(7f, 3.2f, 0.25f), mats.metal);
+            CreateCube("LeftWall", station.transform, new Vector3(-3.4f, 1.3f, -0.4f), new Vector3(0.25f, 2.6f, 5.8f), mats.metal);
+            CreateCube("RightPost", station.transform, new Vector3(3.2f, 1.2f, -2.6f), new Vector3(0.3f, 2.4f, 0.3f), mats.metal);
+            CreateCube("RoofBeam", station.transform, new Vector3(0f, 3.1f, -2.4f), new Vector3(6.5f, 0.15f, 1.2f), mats.metal);
+            CreateCube("Console", station.transform, new Vector3(0f, 0.95f, -2f), new Vector3(2.6f, 0.18f, 0.9f), mats.accent);
+            CreateCube("EquipmentRack", station.transform, new Vector3(-2.2f, 1.1f, -2.4f), new Vector3(0.8f, 1.6f, 0.35f), mats.metal);
+            CreateCube("RackShelf", station.transform, new Vector3(-2.2f, 1.4f, -2.15f), new Vector3(0.7f, 0.06f, 0.4f), mats.accent);
 
-            var board = CreateCube("MissionBoard", station.transform, new Vector3(0f, 1.7f, -2.6f), new Vector3(2.4f, 1.4f, 0.08f), mats.waterPanel);
+            // Thin dark frame behind the world UI (renderer stays on; runtime clarity fix
+            // can hide it if it ever occludes). Canvas sits in front — see CreateUi.
+            var board = CreateCube("MissionBoard", station.transform, new Vector3(0f, 1.75f, -3.05f), new Vector3(2.8f, 1.7f, 0.04f), mats.waterPanel);
             board.AddComponent<WorldMissionBoard>();
 
-            var holder = CreateCube("BottleHolder", station.transform, new Vector3(1.2f, 1.05f, -1.6f), new Vector3(0.25f, 0.25f, 0.25f), mats.accent);
-            var socket = holder.AddComponent<BottleSocket>();
+            var holder = CreateCube("BottleHolder", station.transform, new Vector3(1.35f, 1.1f, -1.75f), new Vector3(0.28f, 0.28f, 0.28f), mats.accent);
+            holder.AddComponent<BottleSocket>();
             var socketInteractor = holder.AddComponent<XRSocketInteractor>();
             socketInteractor.socketActive = true;
 
-            var stationZone = CreateTrigger("StationZone", station.transform, new Vector3(0f, 1f, 0f), new Vector3(7f, 3f, 7f));
+            var stationZone = CreateTrigger("StationZone", station.transform, new Vector3(0f, 1f, 0f), new Vector3(8f, 3f, 8f));
             var zone = stationZone.AddComponent<ZoneTrigger>();
             var zso = new SerializedObject(zone);
             zso.FindProperty("isStation").boolValue = true;
             zso.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateWorldText(station.transform, "REEF RESEARCH STATION", 0.18f, TextAnchor.MiddleCenter)
-                .position = new Vector3(0f, 2.6f, -2.7f);
+            var sign = CreateWorldText(station.transform, "REEF RESEARCH STATION", 0.16f, TextAnchor.MiddleCenter);
+            sign.position = new Vector3(0f, 2.85f, -3.05f);
 
             return station;
         }
 
         static void CreateSeabed(MaterialBag mats)
         {
+            var reefRoot = new GameObject("ReefEnvironment");
+
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Seabed";
-            // Large open sea floor — station at origin, reef stretches forward (+Z).
-            ground.transform.position = new Vector3(0f, 0f, 28f);
-            ground.transform.localScale = new Vector3(14f, 1f, 14f);
+            ground.transform.SetParent(reefRoot.transform);
+            // Compact playable sea — shorter travel between objectives.
+            ground.transform.position = new Vector3(0f, 0f, 14f);
+            ground.transform.localScale = new Vector3(5.5f, 1f, 5.5f);
             ground.GetComponent<Renderer>().sharedMaterial = mats.sand;
             var teleportMask = InteractionLayerMask.GetMask("Teleport");
             var teleport = ground.AddComponent<UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea>();
@@ -313,58 +344,83 @@ namespace ReefExplorer.EditorTools
                 stationTeleport.interactionLayers = teleportMask;
             }
 
-            // Cluster props into reef patches with open water between (not one pile).
-            Vector3[] patches =
+            // Gentle sandy height variation.
+            for (var i = 0; i < 14; i++)
             {
-                new(0f, 0f, 10f),
-                new(-30f, 0f, 24f),
-                new(4f, 0f, 52f),
-                new(34f, 0f, 30f),
-                new(-12f, 0f, 38f),
-                new(20f, 0f, 18f),
-            };
-
-            var rockId = 0;
-            var plantId = 0;
-            var coralId = 0;
-            foreach (var patch in patches)
-            {
-                for (var i = 0; i < 5; i++)
-                {
-                    var a = Random.Range(0f, Mathf.PI * 2f);
-                    var d = Random.Range(1.5f, 5f);
-                    CreateCube($"Rock_{rockId++}", null,
-                        new Vector3(patch.x + Mathf.Cos(a) * d, 0.25f, patch.z + Mathf.Sin(a) * d),
-                        new Vector3(Random.Range(0.4f, 1.6f), Random.Range(0.3f, 1.2f), Random.Range(0.4f, 1.6f)),
-                        mats.rock);
-                }
-
-                for (var i = 0; i < 6; i++)
-                {
-                    var a = Random.Range(0f, Mathf.PI * 2f);
-                    var d = Random.Range(1f, 4.5f);
-                    CreateCube($"Plant_{plantId++}", null,
-                        new Vector3(patch.x + Mathf.Cos(a) * d, 0.45f, patch.z + Mathf.Sin(a) * d),
-                        new Vector3(0.12f, Random.Range(0.5f, 1.3f), 0.12f),
-                        mats.plant);
-                }
-
-                for (var i = 0; i < 3; i++)
-                {
-                    var a = Random.Range(0f, Mathf.PI * 2f);
-                    var d = Random.Range(0.8f, 3.5f);
-                    CreateCube($"Coral_{coralId++}", null,
-                        new Vector3(patch.x + Mathf.Cos(a) * d, 0.35f, patch.z + Mathf.Sin(a) * d),
-                        new Vector3(Random.Range(0.4f, 1.1f), Random.Range(0.4f, 1.1f), Random.Range(0.4f, 1.1f)),
-                        mats.coral);
-                }
+                ProceduralReefMeshes.CreateSandMound($"SandMound_{i}", reefRoot.transform,
+                    new Vector3(Random.Range(-18f, 18f), 0f, Random.Range(4f, 28f)),
+                    Random.Range(1.8f, 3.5f), mats.sand);
             }
 
-            // Invisible walls around the larger sea area.
-            CreateBoundaryWall("Bound_North", new Vector3(0f, 3f, 72f), new Vector3(100f, 8f, 1f));
-            CreateBoundaryWall("Bound_South", new Vector3(0f, 3f, -12f), new Vector3(100f, 8f, 1f));
-            CreateBoundaryWall("Bound_East", new Vector3(52f, 3f, 28f), new Vector3(1f, 8f, 90f));
-            CreateBoundaryWall("Bound_West", new Vector3(-52f, 3f, 28f), new Vector3(1f, 8f, 90f));
+            // Path markers station → buoy → reef.
+            for (var i = 1; i <= 4; i++)
+            {
+                CreateCube($"PathMarker_{i}", reefRoot.transform,
+                    new Vector3(0f, 0.06f, 2.5f + i * 1.6f),
+                    new Vector3(0.55f, 0.04f, 0.3f), mats.accent);
+            }
+
+            PopulateReefPatch(reefRoot.transform, new Vector3(-10f, 0f, 14f), mats, coralHeavy: true, plants: false);
+            PopulateReefPatch(reefRoot.transform, new Vector3(0f, 0f, 22f), mats, coralHeavy: false, plants: true);
+            PopulateReefPatch(reefRoot.transform, new Vector3(11f, 0f, 16f), mats, coralHeavy: false, plants: false);
+            PopulateReefPatch(reefRoot.transform, new Vector3(0f, 0f, 9f), mats, coralHeavy: true, plants: true);
+
+            // Ambient fish (not scan targets).
+            for (var i = 0; i < 6; i++)
+            {
+                var fish = ProceduralReefMeshes.CreateStylizedFish($"ScenicFish_{i}", reefRoot.transform,
+                    new Vector3(Random.Range(-8f, 8f), Random.Range(0.8f, 1.8f), Random.Range(8f, 22f)),
+                    i % 2 == 0 ? mats.clown : mats.scanner, Random.Range(0.7f, 1.1f));
+                var wander = fish.AddComponent<AnimalWander>();
+                var wso = new SerializedObject(wander);
+                wso.FindProperty("center").vector3Value = fish.transform.position;
+                wso.FindProperty("extents").vector3Value = new Vector3(3f, 0.6f, 3f);
+                wso.FindProperty("speed").floatValue = 0.4f;
+                wso.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            CreateBoundaryWall("Bound_North", new Vector3(0f, 3f, 34f), new Vector3(50f, 8f, 1f));
+            CreateBoundaryWall("Bound_South", new Vector3(0f, 3f, -8f), new Vector3(50f, 8f, 1f));
+            CreateBoundaryWall("Bound_East", new Vector3(22f, 3f, 12f), new Vector3(1f, 8f, 50f));
+            CreateBoundaryWall("Bound_West", new Vector3(-22f, 3f, 12f), new Vector3(1f, 8f, 50f));
+        }
+
+        static void PopulateReefPatch(Transform parent, Vector3 center, MaterialBag mats, bool coralHeavy, bool plants)
+        {
+            for (var i = 0; i < 5; i++)
+            {
+                var a = Random.Range(0f, Mathf.PI * 2f);
+                var d = Random.Range(1.2f, 4f);
+                ProceduralReefMeshes.CreateRock($"Rock_{center.x:0}_{i}", parent,
+                    center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d),
+                    Random.Range(0.6f, 1.3f), mats.rock);
+            }
+
+            var coralCount = coralHeavy ? 6 : 3;
+            for (var i = 0; i < coralCount; i++)
+            {
+                var a = Random.Range(0f, Mathf.PI * 2f);
+                var d = Random.Range(0.8f, 3.5f);
+                var p = center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d);
+                var kind = i % 3;
+                if (kind == 0)
+                    ProceduralReefMeshes.CreateBranchingCoral($"CoralBranch_{center.x:0}_{i}", parent, p, mats.coral);
+                else if (kind == 1)
+                    ProceduralReefMeshes.CreateRoundedCoral($"CoralRound_{center.x:0}_{i}", parent, p, mats.accent);
+                else
+                    ProceduralReefMeshes.CreateFanCoral($"CoralFan_{center.x:0}_{i}", parent, p, mats.clown);
+            }
+
+            if (!plants)
+                return;
+
+            for (var i = 0; i < 8; i++)
+            {
+                var a = Random.Range(0f, Mathf.PI * 2f);
+                var d = Random.Range(0.6f, 3.8f);
+                ProceduralReefMeshes.CreateSeaPlant($"Plant_{center.x:0}_{i}", parent,
+                    center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d), mats.plant);
+            }
         }
 
         static void CreateBoundaryWall(string name, Vector3 pos, Vector3 scale)
@@ -378,52 +434,66 @@ namespace ReefExplorer.EditorTools
 
         static void CreateZonesAndAnimals(MaterialBag mats, SpeciesDefinition[] species)
         {
-            // Far apart so the player swims / walks through open water between objectives.
-            CreateSurveyZone("Zone_Coral", "zone_coral", new Vector3(-30f, 0f, 24f), mats.coral, species[0], mats.clown, PrimitiveType.Capsule, new Vector3(0.25f, 0.2f, 0.25f));
-            CreateSurveyZone("Zone_Turtle", "zone_turtle", new Vector3(4f, 0f, 52f), mats.plant, species[1], mats.turtle, PrimitiveType.Cube, new Vector3(0.9f, 0.35f, 0.55f));
-            CreateSurveyZone("Zone_Ray", "zone_ray", new Vector3(34f, 0f, 30f), mats.rock, species[2], mats.ray, PrimitiveType.Cube, new Vector3(1.1f, 0.12f, 0.7f));
+            // Distinct areas, short walks from the station/buoy.
+            CreateSurveyZone("Zone_Coral", "zone_coral", "CORAL GARDEN", new Vector3(-10f, 0f, 14f), mats, species[0], AnimalKind.Clown);
+            CreateSurveyZone("Zone_Turtle", "zone_turtle", "SEAGRASS CROSSING", new Vector3(0f, 0f, 22f), mats, species[1], AnimalKind.Turtle);
+            CreateSurveyZone("Zone_Ray", "zone_ray", "SANDY PASSAGE", new Vector3(11f, 0f, 16f), mats, species[2], AnimalKind.Ray);
 
-            var sample = CreateTrigger("SampleZone", null, new Vector3(16f, 0.6f, 40f), new Vector3(2.2f, 1.4f, 2.2f));
+            var sample = CreateTrigger("SampleZone", null, new Vector3(6f, 0.6f, 18f), new Vector3(2.2f, 1.4f, 2.2f));
             sample.AddComponent<SampleZone>();
-            var marker = CreateCube("SampleMarker", sample.transform, Vector3.zero, new Vector3(2f, 0.05f, 2f), mats.accent);
-            CreateWorldText(sample.transform, "WATER SAMPLE POINT\nHold bottle + press E / Trigger", 0.08f, TextAnchor.LowerCenter)
-                .localPosition = new Vector3(0f, 1.2f, 0f);
+            CreateCube("SampleMarker", sample.transform, Vector3.zero, new Vector3(2f, 0.05f, 2f), mats.accent);
+            var sampleLabel = CreateWorldText(sample.transform, "WATER SAMPLE POINT\nHold bottle + press E / Trigger", 0.07f, TextAnchor.LowerCenter);
+            sampleLabel.localPosition = new Vector3(0f, 1.2f, 0f);
+            sampleLabel.rotation = Quaternion.identity;
         }
 
-        static void CreateSurveyZone(string name, string zoneId, Vector3 pos, Material zoneMat, SpeciesDefinition species, Material animalMat, PrimitiveType shape, Vector3 animalScale)
+        enum AnimalKind { Clown, Turtle, Ray }
+
+        static void CreateSurveyZone(string name, string zoneId, string label, Vector3 pos, MaterialBag mats, SpeciesDefinition species, AnimalKind kind)
         {
             var zone = new GameObject(name);
             zone.transform.position = pos;
-            var floor = CreateCube("ZonePad", zone.transform, new Vector3(0f, 0.02f, 0f), new Vector3(6f, 0.05f, 6f), zoneMat);
-            var trigger = CreateTrigger("ZoneTrigger", zone.transform, new Vector3(0f, 1.5f, 0f), new Vector3(7f, 3f, 7f));
+            CreateCube("ZonePad", zone.transform, new Vector3(0f, 0.02f, 0f), new Vector3(5.5f, 0.04f, 5.5f),
+                kind == AnimalKind.Clown ? mats.coral : kind == AnimalKind.Turtle ? mats.plant : mats.sand);
+            var trigger = CreateTrigger("ZoneTrigger", zone.transform, new Vector3(0f, 1.5f, 0f), new Vector3(6.5f, 3f, 6.5f));
             var zt = trigger.AddComponent<ZoneTrigger>();
             var zso = new SerializedObject(zt);
             zso.FindProperty("zoneId").stringValue = zoneId;
             zso.ApplyModifiedPropertiesWithoutUndo();
-            CreateWorldText(zone.transform, zoneId.ToUpperInvariant(), 0.12f, TextAnchor.MiddleCenter).localPosition = new Vector3(0f, 2.4f, 0f);
+            var labelTf = CreateWorldText(zone.transform, label, 0.1f, TextAnchor.MiddleCenter);
+            labelTf.localPosition = new Vector3(0f, 2.3f, 0f);
+            labelTf.rotation = Quaternion.identity;
 
-            var animal = shape == PrimitiveType.Capsule
-                ? GameObject.CreatePrimitive(PrimitiveType.Capsule)
-                : GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject animal;
+            if (kind == AnimalKind.Clown)
+                animal = ProceduralReefMeshes.CreateStylizedFish($"Animal_{species.DisplayName}", zone.transform, pos + new Vector3(0f, 1f, 0f), mats.clown, 1.1f);
+            else if (kind == AnimalKind.Turtle)
+                animal = ProceduralReefMeshes.CreateStylizedTurtle($"Animal_{species.DisplayName}", zone.transform, pos + new Vector3(0f, 0.7f, 0f), mats.turtle);
+            else
+                animal = ProceduralReefMeshes.CreateStylizedRay($"Animal_{species.DisplayName}", zone.transform, pos + new Vector3(0f, 0.55f, 0f), mats.ray);
+
+            // Keep animal as direct zone child for Find() names used by stylized visuals.
+            animal.transform.SetParent(zone.transform, true);
             animal.name = $"Animal_{species.DisplayName}";
-            animal.transform.SetParent(zone.transform);
-            animal.transform.localPosition = new Vector3(0f, 1.1f, 0f);
-            animal.transform.localScale = animalScale;
-            animal.GetComponent<Renderer>().sharedMaterial = animalMat;
+
             var survey = animal.AddComponent<SurveyAnimal>();
             var sso = new SerializedObject(survey);
             sso.FindProperty("animalInstanceId").stringValue = $"{species.SpeciesId}_01";
             sso.FindProperty("species").objectReferenceValue = species;
             sso.FindProperty("zoneId").stringValue = zoneId;
+            var renderers = animal.GetComponentsInChildren<Renderer>();
             var rends = sso.FindProperty("tintRenderers");
-            rends.arraySize = 1;
-            rends.GetArrayElementAtIndex(0).objectReferenceValue = animal.GetComponent<Renderer>();
+            rends.arraySize = renderers.Length;
+            for (var i = 0; i < renderers.Length; i++)
+                rends.GetArrayElementAtIndex(i).objectReferenceValue = renderers[i];
             sso.ApplyModifiedPropertiesWithoutUndo();
-            animal.AddComponent<AnimalWander>();
-            var wander = new SerializedObject(animal.GetComponent<AnimalWander>());
-            wander.FindProperty("center").vector3Value = animal.transform.position;
-            wander.FindProperty("extents").vector3Value = new Vector3(4.5f, 0.7f, 4.5f);
-            wander.ApplyModifiedPropertiesWithoutUndo();
+
+            var wander = animal.AddComponent<AnimalWander>();
+            var wso = new SerializedObject(wander);
+            wso.FindProperty("center").vector3Value = animal.transform.position;
+            wso.FindProperty("extents").vector3Value = new Vector3(2.5f, 0.5f, 2.5f);
+            wso.FindProperty("speed").floatValue = 0.35f;
+            wso.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static void CreateTools(MaterialBag mats, GameObject station)
@@ -474,6 +544,86 @@ namespace ReefExplorer.EditorTools
             bso.FindProperty("liquidRenderer").objectReferenceValue = liquid.GetComponent<Renderer>();
             bso.ApplyModifiedPropertiesWithoutUndo();
             bottle.AddComponent<ToolRespawn>();
+        }
+
+        static void CreateMonitoringBuoy(MaterialBag mats)
+        {
+            var root = new GameObject("MonitoringBuoy");
+            root.transform.position = new Vector3(0f, 0f, 8f);
+
+            CreateCube("BuoyBase", root.transform, new Vector3(0f, 0.15f, 0f), new Vector3(1.1f, 0.25f, 1.1f), mats.metal);
+            CreateCube("BuoyPole", root.transform, new Vector3(0f, 1.2f, 0f), new Vector3(0.16f, 2.2f, 0.16f), mats.metal);
+            var head = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            head.name = "BuoyHead";
+            head.transform.SetParent(root.transform, false);
+            head.transform.localPosition = new Vector3(0f, 2.45f, 0f);
+            head.transform.localScale = new Vector3(0.95f, 0.35f, 0.95f);
+            head.GetComponent<Renderer>().sharedMaterial = mats.accent;
+            Object.DestroyImmediate(head.GetComponent<Collider>());
+            var lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            lamp.name = "BuoyLamp";
+            lamp.transform.SetParent(root.transform, false);
+            lamp.transform.localPosition = new Vector3(0f, 2.95f, 0f);
+            lamp.transform.localScale = Vector3.one * 0.35f;
+            lamp.GetComponent<Renderer>().sharedMaterial = mats.accent;
+            Object.DestroyImmediate(lamp.GetComponent<Collider>());
+            CreateCube("Antenna", root.transform, new Vector3(0.25f, 3.25f, 0f), new Vector3(0.05f, 0.55f, 0.05f), mats.metal);
+
+            var lightGo = new GameObject("StatusLight");
+            lightGo.transform.SetParent(root.transform, false);
+            lightGo.transform.localPosition = new Vector3(0f, 2.9f, 0f);
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.range = 8f;
+            light.intensity = 1.2f;
+            light.color = new Color(1f, 0.55f, 0.1f);
+
+            var signalGo = new GameObject("SignalSource");
+            signalGo.transform.SetParent(root.transform, false);
+            signalGo.transform.localPosition = new Vector3(0f, 2.4f, 0f);
+            var signal = signalGo.AddComponent<AudioSource>();
+            signal.spatialBlend = 1f;
+            signal.loop = true;
+            signal.volume = 0.3f;
+            signal.minDistance = 2f;
+            signal.maxDistance = 28f;
+            signal.clip = ProceduralAudioFactory.Load("sfx_buoy_signal");
+
+            var buoy = root.AddComponent<MonitoringBuoy>();
+            var bso = new SerializedObject(buoy);
+            bso.FindProperty("statusRenderers").arraySize = 2;
+            bso.FindProperty("statusRenderers").GetArrayElementAtIndex(0).objectReferenceValue = head.GetComponent<Renderer>();
+            bso.FindProperty("statusRenderers").GetArrayElementAtIndex(1).objectReferenceValue = lamp.GetComponent<Renderer>();
+            bso.FindProperty("statusLight").objectReferenceValue = light;
+            bso.FindProperty("signalSource").objectReferenceValue = signal;
+            bso.ApplyModifiedPropertiesWithoutUndo();
+
+            var socketGo = CreateCube("BuoyPowerSocket", root.transform, new Vector3(0.55f, 1.6f, 0f), new Vector3(0.35f, 0.35f, 0.35f), mats.metal);
+            var socketInteractor = socketGo.AddComponent<XRSocketInteractor>();
+            socketInteractor.socketActive = true;
+            var powerSocket = socketGo.AddComponent<BuoyPowerSocket>();
+            var pso = new SerializedObject(powerSocket);
+            pso.FindProperty("socket").objectReferenceValue = socketInteractor;
+            pso.FindProperty("snapPoint").objectReferenceValue = socketGo.transform;
+            pso.FindProperty("buoy").objectReferenceValue = buoy;
+            pso.ApplyModifiedPropertiesWithoutUndo();
+
+            var cell = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            cell.name = "PowerCell";
+            cell.transform.position = new Vector3(1.35f, 0.35f, 7.4f);
+            cell.transform.localScale = new Vector3(0.18f, 0.22f, 0.18f);
+            cell.GetComponent<Renderer>().sharedMaterial = mats.scanner;
+            var cellBody = cell.AddComponent<Rigidbody>();
+            ConfigureGrabBody(cellBody);
+            cellBody.isKinematic = true;
+            var cellGrab = cell.AddComponent<XRGrabInteractable>();
+            cellGrab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+            cell.AddComponent<PowerCell>();
+            cell.AddComponent<ToolRespawn>();
+
+            var buoyLabel = CreateWorldText(root.transform, "REEF BUOY SEVEN\nInsert power cell", 0.08f, TextAnchor.MiddleCenter);
+            buoyLabel.localPosition = new Vector3(0f, 3.55f, 0f);
+            buoyLabel.rotation = Quaternion.identity;
         }
 
         static void CreateTutorialProps(MaterialBag mats)
@@ -554,31 +704,30 @@ namespace ReefExplorer.EditorTools
             canvasGo.AddComponent<GraphicRaycaster>();
             canvasGo.AddComponent<TrackedDeviceGraphicRaycaster>();
             var rt = canvasGo.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(1200f, 800f);
-            // Face the player at the station (player looks toward -Z).
-            canvasGo.transform.SetPositionAndRotation(
-                new Vector3(0f, 1.7f, -2.55f),
-                Quaternion.Euler(0f, 180f, 0f));
-            canvasGo.transform.localScale = Vector3.one * 0.002f;
+            rt.sizeDelta = new Vector2(1100f, 720f);
+            // Fixed mount on the back wall (do NOT billboard — that clipped into MissionBoard).
+            canvasGo.transform.position = new Vector3(0f, 1.75f, -2.88f);
+            canvasGo.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            canvasGo.transform.localScale = Vector3.one * 0.0022f;
 
-            var panel = CreateUiPanel(canvasGo.transform, "Panel", new Vector2(1100f, 700f), new Color(0.05f, 0.14f, 0.2f, 0.92f));
-            var title = CreateUiText(panel.transform, "Title", "Reef Explorer — The Missing Survey", 40, TextAnchor.UpperCenter, new Vector2(0f, 280f), new Vector2(1000f, 60f));
-            var body = CreateUiText(panel.transform, "Body",
-                "Choose a control mode, then Start Dive.\nSurvey three zones, scan three animals, fill and return the bottle, submit the log.",
-                24, TextAnchor.UpperLeft, new Vector2(0f, 160f), new Vector2(1000f, 140f));
-            var objective = CreateUiText(panel.transform, "Objective", "Choose VR or Desktop.", 26, TextAnchor.UpperLeft, new Vector2(0f, 40f), new Vector2(1000f, 60f));
-            var progress = CreateUiText(panel.transform, "Progress", "", 22, TextAnchor.UpperLeft, new Vector2(0f, -20f), new Vector2(1000f, 40f));
-            var controls = CreateUiText(panel.transform, "Controls", "", 20, TextAnchor.UpperLeft, new Vector2(0f, -70f), new Vector2(1000f, 50f));
-            var feedback = CreateUiText(panel.transform, "Feedback", "", 22, TextAnchor.UpperLeft, new Vector2(0f, -120f), new Vector2(1000f, 40f));
-            var results = CreateUiText(panel.transform, "Results", "", 20, TextAnchor.UpperLeft, new Vector2(0f, -220f), new Vector2(1000f, 160f));
+            var briefing = CreateUiPanel(canvasGo.transform, "BriefingPanel", new Vector2(1040f, 680f), new Color(0.03f, 0.12f, 0.18f, 0.96f));
+            var title = CreateUiText(briefing.transform, "Title", "Reef Rescue — The Silent Signal", 36, TextAnchor.UpperCenter, new Vector2(0f, 290f), new Vector2(960f, 50f));
+            var body = CreateUiText(briefing.transform, "Body",
+                "Welcome, diver. Restore the buoy, survey wildlife, return a water sample.",
+                22, TextAnchor.UpperLeft, new Vector2(0f, 140f), new Vector2(960f, 220f));
 
-            var xrBtn = CreateUiButton(panel.transform, "Btn_XR", "VR / Simulator", new Vector2(-360f, -300f));
-            var deskBtn = CreateUiButton(panel.transform, "Btn_Desktop", "Desktop", new Vector2(-120f, -300f));
-            var startBtn = CreateUiButton(panel.transform, "Btn_Start", "Start Dive", new Vector2(120f, -300f));
-            var submitBtn = CreateUiButton(panel.transform, "Btn_Submit", "Submit Log", new Vector2(360f, -300f));
-            var creditsBtn = CreateUiButton(panel.transform, "Btn_Credits", "Credits", new Vector2(-360f, -370f));
-            var restartBtn = CreateUiButton(panel.transform, "Btn_Restart", "Restart", new Vector2(-120f, -370f));
-            var quitBtn = CreateUiButton(panel.transform, "Btn_Quit", "Quit", new Vector2(120f, -370f));
+            var xrBtn = CreateUiButton(briefing.transform, "Btn_XR", "VR / Simulator", new Vector2(-300f, -200f));
+            var deskBtn = CreateUiButton(briefing.transform, "Btn_Desktop", "Desktop", new Vector2(-80f, -200f));
+            var startBtn = CreateUiButton(briefing.transform, "Btn_Start", "Start Dive", new Vector2(140f, -200f));
+            var submitBtn = CreateUiButton(briefing.transform, "Btn_Submit", "Submit Log", new Vector2(320f, -200f));
+            submitBtn.gameObject.SetActive(false);
+            var creditsBtn = CreateUiButton(briefing.transform, "Btn_Credits", "Credits", new Vector2(-300f, -280f));
+            var restartBtn = CreateUiButton(briefing.transform, "Btn_Restart", "Restart", new Vector2(-80f, -280f));
+            var quitBtn = CreateUiButton(briefing.transform, "Btn_Quit", "Quit", new Vector2(140f, -280f));
+
+            var resultsPanel = CreateUiPanel(canvasGo.transform, "ResultsPanel", new Vector2(1040f, 680f), new Color(0.03f, 0.14f, 0.16f, 0.97f));
+            resultsPanel.SetActive(false);
+            var results = CreateUiText(resultsPanel.transform, "Results", "", 20, TextAnchor.UpperLeft, new Vector2(0f, 40f), new Vector2(960f, 560f));
 
             var board = Object.FindAnyObjectByType<WorldMissionBoard>();
             if (board != null)
@@ -595,18 +744,40 @@ namespace ReefExplorer.EditorTools
                 bso.FindProperty("restartButton").objectReferenceValue = restartBtn;
                 bso.FindProperty("quitButton").objectReferenceValue = quitBtn;
                 bso.FindProperty("modeSelector").objectReferenceValue = modeSelector;
+                bso.FindProperty("briefingPanel").objectReferenceValue = briefing;
+                bso.FindProperty("resultsPanel").objectReferenceValue = resultsPanel;
                 bso.ApplyModifiedPropertiesWithoutUndo();
             }
 
+            // Screen-space HUD only (objectives / progress) — not on the world board.
+            var hudCanvas = new GameObject("MissionHudCanvas");
+            var hCanvas = hudCanvas.AddComponent<Canvas>();
+            hCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            hCanvas.sortingOrder = 200;
+            hudCanvas.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            hudCanvas.AddComponent<GraphicRaycaster>();
+            var hudPanel = CreateUiPanel(hudCanvas.transform, "HudPanel", new Vector2(880f, 96f), new Color(0.02f, 0.08f, 0.12f, 0.88f));
+            var hudRt = hudPanel.GetComponent<RectTransform>();
+            hudRt.anchorMin = new Vector2(0.5f, 1f);
+            hudRt.anchorMax = new Vector2(0.5f, 1f);
+            hudRt.pivot = new Vector2(0.5f, 1f);
+            hudRt.anchoredPosition = new Vector2(0f, -10f);
+            var objective = CreateUiText(hudPanel.transform, "Objective", "", 18, TextAnchor.UpperLeft, new Vector2(0f, 28f), new Vector2(840f, 28f));
+            var progress = CreateUiText(hudPanel.transform, "Progress", "", 15, TextAnchor.UpperLeft, new Vector2(0f, 2f), new Vector2(840f, 22f));
+            var controls = CreateUiText(hudPanel.transform, "Controls", "", 14, TextAnchor.UpperLeft, new Vector2(0f, -20f), new Vector2(840f, 20f));
+            var feedback = CreateUiText(hudPanel.transform, "Feedback", "", 14, TextAnchor.UpperLeft, new Vector2(0f, -40f), new Vector2(840f, 20f));
+
             var hudGo = new GameObject("MissionHud");
-            hudGo.transform.SetParent(canvasGo.transform);
+            hudGo.transform.SetParent(hudCanvas.transform);
             var hud = hudGo.AddComponent<MissionHud>();
             var hso = new SerializedObject(hud);
             hso.FindProperty("objectiveText").objectReferenceValue = objective;
             hso.FindProperty("feedbackText").objectReferenceValue = feedback;
             hso.FindProperty("progressText").objectReferenceValue = progress;
             hso.FindProperty("controlsText").objectReferenceValue = controls;
+            hso.FindProperty("hudRoot").objectReferenceValue = hudPanel;
             hso.ApplyModifiedPropertiesWithoutUndo();
+            hudPanel.SetActive(false);
 
             // Screen-space pause menu
             var pauseCanvas = new GameObject("PauseCanvas");
@@ -614,37 +785,117 @@ namespace ReefExplorer.EditorTools
             pCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             pauseCanvas.AddComponent<CanvasScaler>();
             pauseCanvas.AddComponent<GraphicRaycaster>();
-            var pausePanel = CreateUiPanel(pauseCanvas.transform, "PausePanel", new Vector2(420f, 320f), new Color(0.05f, 0.1f, 0.14f, 0.95f));
-            CreateUiText(pausePanel.transform, "PauseTitle", "Paused", 34, TextAnchor.UpperCenter, new Vector2(0f, 120f), new Vector2(360f, 50f));
-            var resume = CreateUiButton(pausePanel.transform, "Resume", "Resume", new Vector2(0f, 40f));
-            var restart = CreateUiButton(pausePanel.transform, "Restart", "Restart", new Vector2(0f, -30f));
-            var quit = CreateUiButton(pausePanel.transform, "Quit", "Quit", new Vector2(0f, -100f));
+            var pausePanel = CreateUiPanel(pauseCanvas.transform, "PausePanel", new Vector2(420f, 380f), new Color(0.05f, 0.1f, 0.14f, 0.95f));
+            CreateUiText(pausePanel.transform, "PauseTitle", "Paused / Settings", 34, TextAnchor.UpperCenter, new Vector2(0f, 150f), new Vector2(360f, 50f));
+            var resume = CreateUiButton(pausePanel.transform, "Resume", "Resume", new Vector2(0f, 80f));
+            var restart = CreateUiButton(pausePanel.transform, "Restart", "Restart", new Vector2(0f, 10f));
+            var quit = CreateUiButton(pausePanel.transform, "Quit", "Quit", new Vector2(0f, -60f));
+            CreateUiText(pausePanel.transform, "AmbLabel", "Ambience", 18, TextAnchor.MiddleLeft, new Vector2(-80f, -120f), new Vector2(140f, 28f));
+            CreateUiText(pausePanel.transform, "FxLabel", "Effects", 18, TextAnchor.MiddleLeft, new Vector2(-80f, -160f), new Vector2(140f, 28f));
+            var ambSlider = CreateUiSlider(pausePanel.transform, "AmbienceSlider", new Vector2(70f, -120f));
+            var fxSlider = CreateUiSlider(pausePanel.transform, "EffectsSlider", new Vector2(70f, -160f));
+            var muteToggle = CreateUiToggle(pausePanel.transform, "MuteToggle", "Mute", new Vector2(0f, -200f));
             var pause = pauseCanvas.AddComponent<PauseMenuController>();
             var pso = new SerializedObject(pause);
             pso.FindProperty("panel").objectReferenceValue = pausePanel;
             pso.FindProperty("resumeButton").objectReferenceValue = resume;
             pso.FindProperty("restartButton").objectReferenceValue = restart;
             pso.FindProperty("quitButton").objectReferenceValue = quit;
+            pso.FindProperty("ambienceSlider").objectReferenceValue = ambSlider;
+            pso.FindProperty("effectsSlider").objectReferenceValue = fxSlider;
+            pso.FindProperty("muteToggle").objectReferenceValue = muteToggle;
             pso.FindProperty("audioHub").objectReferenceValue = audioHub;
             pso.ApplyModifiedPropertiesWithoutUndo();
             pausePanel.SetActive(false);
         }
 
+        static Toggle CreateUiToggle(Transform parent, string name, string label, Vector2 pos)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(180f, 28f);
+            rt.anchoredPosition = pos;
+
+            var bg = go.AddComponent<Image>();
+            bg.color = new Color(0.15f, 0.2f, 0.25f, 1f);
+
+            var checkGo = new GameObject("Checkmark", typeof(RectTransform));
+            checkGo.transform.SetParent(go.transform, false);
+            var checkRt = (RectTransform)checkGo.transform;
+            checkRt.anchorMin = new Vector2(0f, 0.5f);
+            checkRt.anchorMax = new Vector2(0f, 0.5f);
+            checkRt.pivot = new Vector2(0f, 0.5f);
+            checkRt.sizeDelta = new Vector2(22f, 22f);
+            checkRt.anchoredPosition = new Vector2(4f, 0f);
+            var checkImg = checkGo.AddComponent<Image>();
+            checkImg.color = new Color(0.2f, 0.85f, 0.55f, 1f);
+
+            var toggle = go.AddComponent<Toggle>();
+            toggle.targetGraphic = bg;
+            toggle.graphic = checkImg;
+            toggle.isOn = false;
+
+            CreateUiText(go.transform, "Label", label, 18, TextAnchor.MiddleLeft, new Vector2(40f, 0f), new Vector2(120f, 28f));
+            return toggle;
+        }
+
+        static Slider CreateUiSlider(Transform parent, string name, Vector2 pos)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(180f, 24f);
+            rt.anchoredPosition = pos;
+            var bg = go.AddComponent<Image>();
+            bg.color = new Color(0.15f, 0.2f, 0.25f, 1f);
+            var slider = go.AddComponent<Slider>();
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = 0.8f;
+            slider.targetGraphic = bg;
+
+            var fillArea = new GameObject("Fill Area", typeof(RectTransform));
+            fillArea.transform.SetParent(go.transform, false);
+            var fillAreaRt = (RectTransform)fillArea.transform;
+            fillAreaRt.anchorMin = Vector2.zero;
+            fillAreaRt.anchorMax = Vector2.one;
+            fillAreaRt.offsetMin = new Vector2(6f, 6f);
+            fillAreaRt.offsetMax = new Vector2(-6f, -6f);
+
+            var fill = new GameObject("Fill", typeof(RectTransform));
+            fill.transform.SetParent(fillArea.transform, false);
+            var fillImg = fill.AddComponent<Image>();
+            fillImg.color = new Color(0.2f, 0.75f, 0.7f, 1f);
+            var fillRt = (RectTransform)fill.transform;
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = Vector2.one;
+            fillRt.offsetMin = Vector2.zero;
+            fillRt.offsetMax = Vector2.zero;
+            slider.fillRect = fillRt;
+            return slider;
+        }
+
         static void CreateParticles()
         {
             var go = new GameObject("UnderwaterParticles");
-            go.transform.position = new Vector3(0f, 2f, 30f);
+            go.transform.position = new Vector3(0f, 2f, 14f);
             var ps = go.AddComponent<ParticleSystem>();
             var main = ps.main;
-            main.startLifetime = 10f;
-            main.startSize = 0.04f;
-            main.startColor = new Color(0.35f, 0.75f, 1f, 0.55f); // blue water drops
-            main.maxParticles = 220;
+            main.startLifetime = 12f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.02f, 0.06f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.2f);
+            main.startColor = new Color(0.45f, 0.85f, 1f, 0.45f);
+            main.maxParticles = 180;
+            main.gravityModifier = -0.02f;
             var emission = ps.emission;
-            emission.rateOverTime = 18f;
+            emission.rateOverTime = 14f;
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(70f, 6f, 70f);
+            shape.scale = new Vector3(36f, 5f, 36f);
+            var vel = ps.velocityOverLifetime;
+            vel.enabled = true;
+            vel.y = new ParticleSystem.MinMaxCurve(0.15f);
 
             // Avoid pink/magenta missing-material particles in URP.
             var renderer = go.GetComponent<ParticleSystemRenderer>();
@@ -730,6 +981,7 @@ namespace ReefExplorer.EditorTools
             text.alignment = TextAlignment.Center;
             text.color = Color.white;
             text.fontStyle = FontStyle.Bold;
+            go.AddComponent<FaceCameraLabel>();
             return go.transform;
         }
 

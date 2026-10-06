@@ -85,6 +85,7 @@ namespace ReefExplorer.Input
                 return;
 
             // Auto-select Desktop as soon as the player tries to move or grab.
+            // faceBoard:false — never snap look while WASD (especially D) is held.
             var trying =
                 (Keyboard.current != null &&
                  (Keyboard.current.wKey.isPressed || Keyboard.current.aKey.isPressed ||
@@ -93,9 +94,7 @@ namespace ReefExplorer.Input
                 (Mouse.current != null && Mouse.current.rightButton.isPressed);
 
             if (trying)
-            {
-                FindAnyObjectByType<PlayerModeSelector>()?.ChooseDesktop();
-            }
+                FindAnyObjectByType<PlayerModeSelector>()?.ChooseDesktop(faceBoard: false);
         }
 
         void Look()
@@ -169,7 +168,7 @@ namespace ReefExplorer.Input
                 MissionController.Instance.NotifyTutorialStep("activate");
             }
 
-            // Hotkeys: 1 buoy, 2 scanner, 3 bottle (easy coursework testing)
+            // Hotkeys: 1 practice tool, 2 scanner, 3 bottle, 4 power cell
             if (Keyboard.current != null)
             {
                 if (Keyboard.current.digit1Key.wasPressedThisFrame || Keyboard.current.numpad1Key.wasPressedThisFrame)
@@ -183,6 +182,10 @@ namespace ReefExplorer.Input
                 if (Keyboard.current.digit3Key.wasPressedThisFrame || Keyboard.current.numpad3Key.wasPressedThisFrame)
                 {
                     if (TryPickupByName("SampleBottle")) return;
+                }
+                if (Keyboard.current.digit4Key.wasPressedThisFrame || Keyboard.current.numpad4Key.wasPressedThisFrame)
+                {
+                    if (TryPickupByName("PowerCell")) return;
                 }
             }
 
@@ -214,7 +217,7 @@ namespace ReefExplorer.Input
             if (TryPickupNearest())
                 return;
 
-            MissionEvents.RaiseFeedback("Nothing to grab nearby. Walk closer to the orange buoy / scanner / bottle, look at it, press E.");
+            MissionEvents.RaiseFeedback("Nothing to grab nearby. Walk closer to practice tool / scanner / bottle / power cell, look at it, press E.");
         }
 
         bool TryPickupByName(string objectName)
@@ -329,6 +332,10 @@ namespace ReefExplorer.Input
             if (heldScanner != null)
                 MissionController.Instance?.NotifyToolPicked("scanner");
 
+            var cell = heldTransform.GetComponent<PowerCell>();
+            if (cell != null)
+                cell.MarkHeldDesktop(true);
+
             if (MissionController.Instance != null &&
                 MissionController.Instance.State == MissionState.TutorialGrab)
             {
@@ -346,7 +353,10 @@ namespace ReefExplorer.Input
             heldBody.detectCollisions = true;
             heldScanner?.DesktopSetActivated(false);
             if (heldTransform != null)
+            {
                 heldTransform.localScale = heldOriginalScale;
+                heldTransform.GetComponent<PowerCell>()?.MarkHeldDesktop(false);
+            }
 
             // If near the station table, put the item on the table. Otherwise normal drop.
             var tablePoint = new Vector3(0f, 1.14f, -1.7f);
@@ -432,6 +442,13 @@ namespace ReefExplorer.Input
         {
             if (MissionController.Instance != null &&
                 MissionController.Instance.PlayMode == PlayModeType.XR)
+                return;
+
+            var state = MissionController.Instance != null
+                ? MissionController.Instance.State
+                : MissionState.ModeSelect;
+            // Hide clutter while reading the briefing board.
+            if (state is MissionState.Boot or MissionState.ModeSelect or MissionState.Briefing)
                 return;
 
             // Simple crosshair

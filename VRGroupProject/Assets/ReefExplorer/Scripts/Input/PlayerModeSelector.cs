@@ -27,6 +27,7 @@ namespace ReefExplorer.Input
             FaceMissionBoard(desktopPlayerRoot);
             EnsureMainCameraTag(desktopPlayerRoot);
             BindWorldCanvasCamera();
+            SetSimulatorVisible(false);
         }
 
         void OnEnable()
@@ -45,18 +46,39 @@ namespace ReefExplorer.Input
             FaceMissionBoard(xrOriginRoot);
             EnsureMainCameraTag(xrOriginRoot);
             BindWorldCanvasCamera();
+            SetSimulatorVisible(true);
             MissionController.Instance?.SelectPlayMode(PlayModeType.XR);
             MissionEvents.RaiseFeedback("VR / Simulator mode selected. Click Start Dive.");
         }
 
         public void ChooseDesktop()
         {
+            ChooseDesktop(faceBoard: true);
+        }
+
+        /// <param name="faceBoard">
+        /// Only true for the menu button / first pick. Never true while WASD is moving —
+        /// facing the board snaps yaw and feels like a "reset" on D.
+        /// </param>
+        public void ChooseDesktop(bool faceBoard)
+        {
+            var alreadyDesktop =
+                MissionController.Instance != null &&
+                MissionController.Instance.PlayMode == PlayModeType.Desktop;
+
             SetRoots(false, true);
-            FaceMissionBoard(desktopPlayerRoot);
             EnsureMainCameraTag(desktopPlayerRoot);
             BindWorldCanvasCamera();
+            SetSimulatorVisible(false);
+
+            // Never re-aim the player if Desktop is already active.
+            if (!alreadyDesktop && faceBoard)
+                FaceMissionBoard(desktopPlayerRoot);
+
             MissionController.Instance?.SelectPlayMode(PlayModeType.Desktop);
-            MissionEvents.RaiseFeedback("Desktop mode selected. Click Start Dive.");
+
+            if (!alreadyDesktop)
+                MissionEvents.RaiseFeedback("Desktop mode selected. Click Start Dive.");
         }
 
         public void AutoDetectOrShowChooser()
@@ -186,6 +208,19 @@ namespace ReefExplorer.Input
                 InputDeviceCharacteristics.HeadMounted,
                 devices);
             return devices.Count > 0;
+        }
+
+        static void SetSimulatorVisible(bool visible)
+        {
+            // Hide XR Device Simulator overlay/objects while using desktop mode.
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
+            {
+                if (mb == null)
+                    continue;
+                var typeName = mb.GetType().Name;
+                if (typeName.Contains("XRDeviceSimulator") || typeName.Contains("XRInteractionSimulator"))
+                    mb.gameObject.SetActive(visible);
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ namespace ReefExplorer.Core
         public static event Action<SpeciesObservation> AnimalScanned;
         public static event Action SampleCollected;
         public static event Action BottleReturned;
+        public static event Action BuoyRestored;
         public static event Action SurveySubmitted;
         public static event Action MissionRestarted;
 
@@ -28,6 +29,8 @@ namespace ReefExplorer.Core
 
         public static void RaiseBottleReturned() => BottleReturned?.Invoke();
 
+        public static void RaiseBuoyRestored() => BuoyRestored?.Invoke();
+
         public static void RaiseSurveySubmitted() => SurveySubmitted?.Invoke();
 
         public static void RaiseMissionRestarted() => MissionRestarted?.Invoke();
@@ -40,6 +43,7 @@ namespace ReefExplorer.Core
             AnimalScanned = null;
             SampleCollected = null;
             BottleReturned = null;
+            BuoyRestored = null;
             SurveySubmitted = null;
             MissionRestarted = null;
         }

@@ -38,8 +38,8 @@ namespace ReefExplorer.EditorTools
 
             RunFullSetup();
             EditorUtility.DisplayDialog(
-                "Reef Explorer Setup",
-                "Done.\n\n1) Open Assets/VRTestScene and test grab (Space + aim + G).\n2) Open Assets/ReefExplorer/Scenes/ReefExplorer.unity for the mission.",
+                "Reef Rescue Setup",
+                "Done.\n\n1) Open Assets/VRTestScene and test grab (Space + aim + G).\n2) Open Assets/ReefExplorer/Scenes/ReefExplorer.unity\n3) Run Reef Explorer → 6. Validate\n4) Press Play → Desktop → Start Dive.",
                 "OK");
         }
     }

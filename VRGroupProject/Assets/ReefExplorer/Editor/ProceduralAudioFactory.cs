@@ -19,6 +19,7 @@ namespace ReefExplorer.EditorTools
             CreateTone("sfx_sample_fill", 420f, 0.3f, 0.35f);
             CreateTone("sfx_objective", 740f, 0.25f, 0.4f);
             CreateTone("sfx_mission_success", 523.25f, 0.55f, 0.45f, true);
+            CreateTone("sfx_buoy_signal", 310f, 0.9f, 0.22f, false, true);
             CreateNoiseLoop("ambience_underwater", 4f, 0.08f);
             CreateTone("ambience_station_hum", 90f, 2f, 0.12f, false, true);
             AssetDatabase.SaveAssets();

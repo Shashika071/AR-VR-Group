@@ -31,6 +31,8 @@ namespace ReefExplorer.UI
             if (FindAnyObjectByType<StartupMenuUI>() != null)
                 return;
 
+            // World MissionCanvas is the briefing board. This component only adds a thin screen HUD
+            // so we do not duplicate overlapping menus.
             var go = new GameObject("StartupMenuUI");
             go.AddComponent<StartupMenuUI>();
         }
@@ -39,15 +41,26 @@ namespace ReefExplorer.UI
         {
             modeSelector = FindAnyObjectByType<PlayerModeSelector>();
             EnsureEventSystemForMouse();
-            if (panelRoot == null)
-                BuildUi();
+
+            // Prefer the scene-built MissionHudCanvas; avoid a second objective bar.
+            var hasSceneHud = GameObject.Find("MissionHudCanvas") != null;
+            if (!hasSceneHud && panelRoot == null)
+                BuildHudOnly();
 
             MissionEvents.StateChanged += OnStateChanged;
-            MissionEvents.ObjectiveChanged += OnObjective;
-            MissionEvents.FeedbackRequested += OnFeedback;
+            if (!hasSceneHud)
+            {
+                MissionEvents.ObjectiveChanged += OnObjective;
+                MissionEvents.FeedbackRequested += OnFeedback;
+            }
+
             MissionEvents.MissionRestarted += OnRestart;
 
-            ShowMenu();
+            diveStarted = false;
+            if (panelRoot != null)
+                panelRoot.SetActive(false);
+            if (hudRoot != null)
+                hudRoot.SetActive(false);
         }
 
         void OnDestroy()
@@ -60,54 +73,55 @@ namespace ReefExplorer.UI
 
         void Update()
         {
-            // Keyboard shortcuts so stuck/broken mouse clicks are not required.
-            if (!diveStarted && panelRoot != null && panelRoot.activeSelf && Keyboard.current != null)
+            if (Keyboard.current == null)
+                return;
+
+            // Do NOT bind D here — D is move-right in DesktopPlayerController.
+            // Mode is chosen with the board buttons (or auto on Start Dive / first WASD).
+            var state = MissionController.Instance != null
+                ? MissionController.Instance.State
+                : MissionState.ModeSelect;
+            var onBriefing = state is MissionState.Boot or MissionState.ModeSelect or MissionState.Briefing;
+
+            if (onBriefing)
             {
-                if (Keyboard.current.dKey.wasPressedThisFrame)
-                    ChooseDesktop();
+                diveStarted = false;
                 if (Keyboard.current.vKey.wasPressedThisFrame)
                     ChooseXr();
                 if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame)
                     StartDive();
+                return;
             }
 
-            if (diveStarted && Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
-            {
-                if (hudRoot != null)
-                    hudRoot.SetActive(!hudRoot.activeSelf);
-            }
+            diveStarted = true;
+
+            if (Keyboard.current.hKey.wasPressedThisFrame && hudRoot != null)
+                hudRoot.SetActive(!hudRoot.activeSelf);
         }
 
         void OnStateChanged(MissionState _, MissionState next)
         {
             if (next == MissionState.ModeSelect || next == MissionState.Boot || next == MissionState.Briefing)
             {
-                if (!diveStarted || next == MissionState.ModeSelect)
-                    ShowMenu();
+                diveStarted = false;
+                if (panelRoot != null)
+                    panelRoot.SetActive(false);
+                if (hudRoot != null)
+                    hudRoot.SetActive(false);
+                return;
             }
 
-            if (next == MissionState.TutorialMove ||
-                next == MissionState.TutorialGrab ||
-                next == MissionState.TutorialActivate ||
-                next == MissionState.GatherTools ||
-                next == MissionState.SurveyAnimals ||
-                next == MissionState.CollectSample ||
-                next == MissionState.ReturnToStation ||
-                next == MissionState.ReturnBottle ||
-                next == MissionState.SubmitLog ||
-                next == MissionState.Results ||
-                next == MissionState.Credits ||
-                next == MissionState.Complete)
-            {
-                HideMenuShowHud();
-            }
+            diveStarted = true;
+            HideMenuShowHud();
         }
 
         void OnRestart()
         {
             diveStarted = false;
-            ShowMenu();
-            SetStatus("Restarted. Press D = Desktop, then Enter = Start Dive.");
+            if (panelRoot != null)
+                panelRoot.SetActive(false);
+            if (hudRoot != null)
+                hudRoot.SetActive(false);
         }
 
         void OnObjective(string text)
@@ -143,42 +157,30 @@ namespace ReefExplorer.UI
                 hudRoot.SetActive(true);
         }
 
-        void BuildUi()
+        void BuildHudOnly()
         {
             var canvasGo = new GameObject("StartupCanvas");
             canvasGo.transform.SetParent(transform, false);
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 500;
+            canvas.sortingOrder = 400;
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            panelRoot = CreatePanel(canvasGo.transform, "StartupPanel", new Vector2(700f, 420f),
-                new Color(0.03f, 0.1f, 0.16f, 0.96f));
+            // No full-screen briefing panel (world MissionCanvas owns that).
+            panelRoot = null;
 
-            CreateLabel(panelRoot.transform, "Title", "Reef Explorer — The Missing Survey",
-                30, new Vector2(0f, 150f), new Vector2(640f, 44f));
-            statusText = CreateLabel(panelRoot.transform, "Status",
-                "D = Desktop | Enter = Start Dive\nAfter start: Right Click ONCE to look around (do not hold)",
-                18, new Vector2(0f, 50f), new Vector2(640f, 100f));
-
-            CreateButton(panelRoot.transform, "Desktop (D)", new Vector2(-200f, -60f), ChooseDesktop);
-            CreateButton(panelRoot.transform, "VR (V)", new Vector2(0f, -60f), ChooseXr);
-            CreateButton(panelRoot.transform, "Start Dive (Enter)", new Vector2(200f, -60f), StartDive);
-            CreateButton(panelRoot.transform, "Turn to Board", new Vector2(0f, -140f), FaceBoard);
-
-            // Always-on objective HUD after dive starts
-            hudRoot = CreatePanel(canvasGo.transform, "ObjectiveHud", new Vector2(900f, 70f),
-                new Color(0.02f, 0.08f, 0.12f, 0.85f));
+            hudRoot = CreatePanel(canvasGo.transform, "ObjectiveHud", new Vector2(920f, 64f),
+                new Color(0.02f, 0.08f, 0.12f, 0.88f));
             var hudRt = hudRoot.GetComponent<RectTransform>();
-            hudRt.anchoredPosition = new Vector2(0f, -20f);
+            hudRt.anchoredPosition = new Vector2(0f, -16f);
             hudRt.anchorMin = new Vector2(0.5f, 1f);
             hudRt.anchorMax = new Vector2(0.5f, 1f);
             hudRt.pivot = new Vector2(0.5f, 1f);
             objectiveHudText = CreateLabel(hudRoot.transform, "ObjectiveText",
-                "OBJECTIVE: ...", 20, Vector2.zero, new Vector2(860f, 60f));
+                "OBJECTIVE: ...", 20, Vector2.zero, new Vector2(880f, 52f));
             hudRoot.SetActive(false);
         }
 
@@ -216,7 +218,7 @@ namespace ReefExplorer.UI
 
             if (MissionController.Instance.PlayMode == PlayModeType.Unselected)
             {
-                SetStatus("Choose Desktop first (press D).");
+                SetStatus("Choose Desktop on the board first.");
                 return;
             }
 
@@ -245,7 +247,7 @@ namespace ReefExplorer.UI
                 }
             }
 
-            SetStatus("Turned to board. Press D then Enter if buttons feel stuck.");
+            SetStatus("Turned to board. Click Desktop, then Start Dive (or Enter).");
         }
 
         void SetStatus(string text)

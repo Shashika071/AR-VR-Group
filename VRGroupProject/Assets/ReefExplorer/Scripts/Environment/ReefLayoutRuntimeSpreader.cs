@@ -29,6 +29,9 @@ namespace ReefExplorer.Environment
         {
             if (GameObject.Find("ResearchStation") == null)
                 return;
+            // New polished scene layout — do not re-scatter props/zones.
+            if (GameObject.Find("ReefVisuals_v2") != null)
+                return;
             if (FindAnyObjectByType<ReefLayoutRuntimeSpreader>() != null)
                 return;
 
@@ -43,6 +46,9 @@ namespace ReefExplorer.Environment
 
         void Apply()
         {
+            if (GameObject.Find("ReefVisuals_v2") != null)
+                return;
+
             Move("Zone_Coral", CoralZone);
             Move("Zone_Turtle", TurtleZone);
             Move("Zone_Ray", RayZone);

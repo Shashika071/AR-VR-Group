@@ -24,6 +24,7 @@ namespace ReefExplorer.Survey
 
             var payload = new SavedDivePackage
             {
+                schemaVersion = 1,
                 diveLog = log,
                 comparison = comparison,
                 savedAtUtc = DateTime.UtcNow.ToString("o"),
@@ -49,6 +50,7 @@ namespace ReefExplorer.Survey
         [Serializable]
         sealed class SavedDivePackage
         {
+            public int schemaVersion;
             public DiveLogData diveLog;
             public SurveyComparisonResult comparison;
             public string savedAtUtc;

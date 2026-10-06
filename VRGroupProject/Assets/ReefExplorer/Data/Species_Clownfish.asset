@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SpeciesDefinition
   speciesId: clownfish
   displayName: Clownfish
-  description: Clownfish used for the educational reef survey.
+  description: Clownfish live among anemones that protect them from predators.
   accentColor: {r: 1, g: 0.55, b: 0.1, a: 1}

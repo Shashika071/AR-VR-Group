@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SpeciesDefinition
   speciesId: ray
   displayName: Ray
-  description: Ray used for the educational reef survey.
+  description: Many rays glide just above sand, using fins like underwater wings.
   accentColor: {r: 0.45, g: 0.55, b: 0.7, a: 1}

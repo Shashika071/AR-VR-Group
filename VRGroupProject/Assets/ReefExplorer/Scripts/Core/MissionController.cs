@@ -6,8 +6,7 @@ using UnityEngine;
 namespace ReefExplorer.Core
 {
     /// <summary>
-    /// Central mission state machine and progress tracker.
-    /// Keeps interaction/UI/input systems loosely coupled through MissionEvents.
+    /// Central mission state machine for Reef Rescue — The Silent Signal.
     /// </summary>
     public sealed class MissionController : MonoBehaviour
     {
@@ -39,6 +38,8 @@ namespace ReefExplorer.Core
 
         public bool HasScanner { get; private set; }
         public bool HasBottle { get; private set; }
+        public bool BuoyRestored { get; private set; }
+        public bool BaselineUnlocked => BuoyRestored;
         public bool BottleFilled => diveLog.waterSampleCollected;
         public bool BottleReturned { get; private set; }
 
@@ -68,8 +69,14 @@ namespace ReefExplorer.Core
                 return;
 
             playMode = mode;
-            SetState(MissionState.Briefing);
-            SetObjective("Read the mission board, then press Start Dive.");
+
+            // Only jump to Briefing from pre-dive states — never rewind a live dive
+            // if Desktop gets re-selected from movement input.
+            if (state is MissionState.Boot or MissionState.ModeSelect or MissionState.Briefing)
+            {
+                SetState(MissionState.Briefing);
+                SetObjective("Read the mission board, then press Start Dive.");
+            }
         }
 
         public void StartDive()
@@ -81,7 +88,9 @@ namespace ReefExplorer.Core
             }
 
             SetState(MissionState.TutorialMove);
-            SetObjective("Tutorial: move a short distance using teleport (VR) or WASD (Desktop).");
+            SetObjective(playMode == PlayModeType.Desktop
+                ? "Tutorial: walk forward with WASD to the marked training gate."
+                : "Tutorial: teleport forward to the marked training gate.");
         }
 
         public void NotifyTutorialStep(string stepId)
@@ -95,15 +104,19 @@ namespace ReefExplorer.Core
             {
                 case MissionState.TutorialMove when stepId == "move":
                     SetState(MissionState.TutorialGrab);
-                    SetObjective("Tutorial: pick up the practice buoy, then release it.");
+                    SetObjective(playMode == PlayModeType.Desktop
+                        ? "Tutorial: pick up the practice tool (E / Left Click), then drop it (Q)."
+                        : "Tutorial: pick up the practice tool (G while aiming), then release grip.");
                     break;
                 case MissionState.TutorialGrab when stepId == "grab":
                     SetState(MissionState.TutorialActivate);
-                    SetObjective("Tutorial: hold the practice tool and activate it (Trigger / Left Click).");
+                    SetObjective(playMode == PlayModeType.Desktop
+                        ? "Tutorial: hold the practice tool and activate (Left Click)."
+                        : "Tutorial: hold the practice tool and activate (Trigger / Mouse Click).");
                     break;
                 case MissionState.TutorialActivate when stepId == "activate":
                     SetState(MissionState.GatherTools);
-                    SetObjective("Pick up the handheld scanner and the sample bottle.");
+                    SetObjective("Pick up the handheld scanner and the sample bottle from the console.");
                     break;
             }
         }
@@ -117,9 +130,33 @@ namespace ReefExplorer.Core
 
             if (state == MissionState.GatherTools && HasScanner && HasBottle)
             {
-                SetState(MissionState.SurveyAnimals);
-                SetObjective("Visit all three reef zones. Scan the clownfish, turtle and ray.");
+                SetState(MissionState.RepairBuoy);
+                SetObjective("Follow the path to Reef Buoy Seven. Pick up the loose power cell and insert it into the buoy socket.");
             }
+        }
+
+        public bool TryRestoreBuoy()
+        {
+            if (BuoyRestored)
+            {
+                MissionEvents.RaiseFeedback("Buoy already restored.");
+                return false;
+            }
+
+            if (state != MissionState.RepairBuoy &&
+                state != MissionState.GatherTools &&
+                state != MissionState.SurveyAnimals)
+            {
+                MissionEvents.RaiseFeedback("Finish gathering your tools, then restore the buoy.");
+                return false;
+            }
+
+            BuoyRestored = true;
+            diveLog.buoyRestored = true;
+            MissionEvents.RaiseBuoyRestored();
+            SetState(MissionState.SurveyAnimals);
+            SetObjective("Baseline unlocked. Visit Coral Garden, Seagrass Crossing and Sandy Passage. Scan clownfish, turtle and ray.");
+            return true;
         }
 
         public void NotifyZoneEntered(string zoneId)
@@ -139,6 +176,12 @@ namespace ReefExplorer.Core
             if (species == null || string.IsNullOrEmpty(animalInstanceId))
                 return false;
 
+            if (!BuoyRestored)
+            {
+                MissionEvents.RaiseFeedback("Restore Reef Buoy Seven first so the previous survey unlocks.");
+                return false;
+            }
+
             if (diveLog.scannedAnimalIds.Contains(animalInstanceId))
             {
                 MissionEvents.RaiseFeedback("Already scanned. Find a different required animal.");
@@ -157,7 +200,11 @@ namespace ReefExplorer.Core
             diveLog.scannedAnimalIds.Add(animalInstanceId);
             diveLog.observations.Add(observation);
             MissionEvents.RaiseAnimalScanned(observation);
-            MissionEvents.RaiseFeedback($"Logged {species.DisplayName} in {zoneId}.");
+
+            var fact = string.IsNullOrWhiteSpace(species.Description)
+                ? $"Logged {species.DisplayName}."
+                : $"Logged {species.DisplayName}. Fact: {species.Description}";
+            MissionEvents.RaiseFeedback(fact);
 
             if (state == MissionState.SurveyAnimals && HasAllRequiredSpecies())
             {
@@ -186,11 +233,6 @@ namespace ReefExplorer.Core
             {
                 MissionEvents.RaiseFeedback("Bottle already filled.");
                 return false;
-            }
-
-            if (state != MissionState.CollectSample && state != MissionState.SurveyAnimals)
-            {
-                MissionEvents.RaiseFeedback("Finish the animal survey before sampling, if possible.");
             }
 
             diveLog.waterSampleCollected = true;
@@ -226,13 +268,14 @@ namespace ReefExplorer.Core
             BottleReturned = true;
             MissionEvents.RaiseBottleReturned();
             SetState(MissionState.SubmitLog);
-            SetObjective("Submit the dive log when ready. Incomplete surveys cannot be submitted.");
+            SetObjective("Review your observations, then Submit Log on the mission board.");
             return true;
         }
 
         public bool CanSubmit()
         {
-            return BottleReturned &&
+            return BuoyRestored &&
+                   BottleReturned &&
                    diveLog.waterSampleCollected &&
                    HasAllRequiredSpecies() &&
                    HasAllZones();
@@ -251,7 +294,7 @@ namespace ReefExplorer.Core
             lastSavedPath = DiveLogSaver.Save(diveLog, lastComparison);
             MissionEvents.RaiseSurveySubmitted();
             SetState(MissionState.Results);
-            SetObjective("Review the simulated survey comparison, then view credits.");
+            SetObjective("First mission complete. Review the survey comparison, then Credits.");
             return true;
         }
 
@@ -305,6 +348,7 @@ namespace ReefExplorer.Core
             diveLog.startedAtUtc = DateTime.UtcNow.ToString("o");
             diveLog.completedAtUtc = null;
             diveLog.waterSampleCollected = false;
+            diveLog.buoyRestored = false;
             diveLog.visitedZones.Clear();
             diveLog.observations.Clear();
             diveLog.scannedAnimalIds.Clear();
@@ -312,10 +356,11 @@ namespace ReefExplorer.Core
             HasScanner = false;
             HasBottle = false;
             BottleReturned = false;
+            BuoyRestored = false;
             lastComparison = null;
             lastSavedPath = null;
             playMode = PlayModeType.Unselected;
-            Debug.Log($"[ReefExplorer] Session reset ({reason}).");
+            Debug.Log($"[ReefRescue] Session reset ({reason}).");
         }
 
         bool HasAllRequiredSpecies()
@@ -355,6 +400,8 @@ namespace ReefExplorer.Core
 
         string BuildIncompleteMessage()
         {
+            if (!BuoyRestored)
+                return "Restore Reef Buoy Seven (insert the power cell) before submitting.";
             if (!BottleReturned)
                 return "Return the filled bottle to its holder before submitting.";
             if (!diveLog.waterSampleCollected)

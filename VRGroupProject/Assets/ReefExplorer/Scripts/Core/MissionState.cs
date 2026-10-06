@@ -9,14 +9,15 @@ namespace ReefExplorer.Core
         TutorialGrab = 4,
         TutorialActivate = 5,
         GatherTools = 6,
-        SurveyAnimals = 7,
-        CollectSample = 8,
-        ReturnToStation = 9,
-        ReturnBottle = 10,
-        SubmitLog = 11,
-        Results = 12,
-        Credits = 13,
-        Paused = 14,
-        Complete = 15
+        RepairBuoy = 7,
+        SurveyAnimals = 8,
+        CollectSample = 9,
+        ReturnToStation = 10,
+        ReturnBottle = 11,
+        SubmitLog = 12,
+        Results = 13,
+        Credits = 14,
+        Paused = 15,
+        Complete = 16
     }
 }

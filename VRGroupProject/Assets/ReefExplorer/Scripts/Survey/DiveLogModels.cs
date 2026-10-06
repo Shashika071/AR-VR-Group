@@ -20,6 +20,7 @@ namespace ReefExplorer.Survey
         public string startedAtUtc;
         public string completedAtUtc;
         public bool waterSampleCollected;
+        public bool buoyRestored;
         public List<string> visitedZones = new List<string>();
         public List<SpeciesObservation> observations = new List<SpeciesObservation>();
         public List<string> scannedAnimalIds = new List<string>();
@@ -43,6 +44,7 @@ namespace ReefExplorer.Survey
         public string disclaimer;
         public bool missionComplete;
         public bool waterSampleCollected;
+        public bool buoyRestored;
         public float zoneCoveragePercent;
         public int requiredSpeciesCount;
         public int observedRequiredSpeciesCount;

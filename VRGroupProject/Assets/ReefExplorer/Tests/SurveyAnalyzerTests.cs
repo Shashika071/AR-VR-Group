@@ -24,6 +24,7 @@ namespace ReefExplorer.Tests
             var log = new DiveLogData
             {
                 waterSampleCollected = true,
+                buoyRestored = true,
                 visitedZones = new List<string> { "zone_coral", "zone_turtle", "zone_ray" },
                 observations = new List<SpeciesObservation>
                 {

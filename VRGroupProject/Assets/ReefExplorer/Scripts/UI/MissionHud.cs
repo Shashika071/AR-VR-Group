@@ -11,9 +11,19 @@ namespace ReefExplorer.UI
         [SerializeField] Text feedbackText;
         [SerializeField] Text progressText;
         [SerializeField] Text controlsText;
+        [SerializeField] GameObject hudRoot;
         [SerializeField] float feedbackSeconds = 3.5f;
 
         float feedbackUntil;
+
+        void Awake()
+        {
+            if (hudRoot == null && objectiveText != null)
+                hudRoot = objectiveText.transform.parent != null
+                    ? objectiveText.transform.parent.gameObject
+                    : null;
+            SetHudVisible(false);
+        }
 
         void OnEnable()
         {
@@ -23,7 +33,11 @@ namespace ReefExplorer.UI
             MissionEvents.AnimalScanned += OnAnimal;
             MissionEvents.SampleCollected += OnSample;
             MissionEvents.BottleReturned += RefreshProgress;
+            MissionEvents.BuoyRestored += RefreshProgress;
             MissionEvents.SurveySubmitted += RefreshProgress;
+
+            if (MissionController.Instance != null)
+                OnState(MissionState.Boot, MissionController.Instance.State);
         }
 
         void OnDisable()
@@ -34,6 +48,7 @@ namespace ReefExplorer.UI
             MissionEvents.AnimalScanned -= OnAnimal;
             MissionEvents.SampleCollected -= OnSample;
             MissionEvents.BottleReturned -= RefreshProgress;
+            MissionEvents.BuoyRestored -= RefreshProgress;
             MissionEvents.SurveySubmitted -= RefreshProgress;
         }
 
@@ -58,7 +73,24 @@ namespace ReefExplorer.UI
             feedbackUntil = Time.unscaledTime + feedbackSeconds;
         }
 
-        void OnState(MissionState _, MissionState __) => RefreshProgress();
+        void OnState(MissionState _, MissionState next)
+        {
+            // Keep top bar hidden on briefing / mode select so it does not cover the board.
+            var show = next is MissionState.TutorialMove or MissionState.TutorialGrab or MissionState.TutorialActivate
+                or MissionState.GatherTools or MissionState.RepairBuoy or MissionState.SurveyAnimals
+                or MissionState.CollectSample or MissionState.ReturnToStation or MissionState.ReturnBottle
+                or MissionState.SubmitLog or MissionState.Results or MissionState.Credits or MissionState.Complete
+                or MissionState.Paused;
+            SetHudVisible(show);
+            RefreshProgress();
+            RefreshControls();
+        }
+
+        void SetHudVisible(bool visible)
+        {
+            if (hudRoot != null)
+                hudRoot.SetActive(visible);
+        }
 
         void OnAnimal(SpeciesObservation _) => RefreshProgress();
 
@@ -80,6 +112,7 @@ namespace ReefExplorer.UI
             }
 
             progressText.text =
+                $"Buoy {(MissionController.Instance.BuoyRestored ? "OK" : "Silent")}  |  " +
                 $"Species {found}/{species}  |  Zones {log.visitedZones.Count}/{MissionController.Instance.RequiredZones.Count}  |  " +
                 $"Sample {(log.waterSampleCollected ? "Yes" : "No")}  |  Bottle {(MissionController.Instance.BottleReturned ? "Returned" : "Out")}";
         }
@@ -92,10 +125,10 @@ namespace ReefExplorer.UI
             controlsText.text = MissionController.Instance.PlayMode switch
             {
                 PlayModeType.XR =>
-                    "VR / Simulator: Teleport + snap turn | Hold Space/Shift to move controllers | G = Grab | Mouse Click = Activate",
+                    "VR: Teleport + snap turn | Space/Shift aim | G grab | Click activate",
                 PlayModeType.Desktop =>
-                    "Desktop: WASD move | Right Mouse look | E / Left Click pick up | Left Click hold activate scanner | Q drop | Esc pause",
-                _ => "Choose VR or Desktop to see controls."
+                    "Desktop: WASD | Right Mouse look | E grab | Click scanner | Q drop | Esc pause",
+                _ => string.Empty
             };
         }
     }

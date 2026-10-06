@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SpeciesDefinition
   speciesId: sea_turtle
   displayName: Sea Turtle
-  description: Sea Turtle used for the educational reef survey.
+  description: Sea turtles migrate long distances and often return to nesting beaches.
   accentColor: {r: 0.3, g: 0.75, b: 0.4, a: 1}

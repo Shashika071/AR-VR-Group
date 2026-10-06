@@ -20,6 +20,9 @@ namespace ReefExplorer.Interaction
         public string ZoneId => zoneId;
         public bool Scanned => scanned;
 
+        void OnEnable() => MissionEvents.MissionRestarted += ResetForRestart;
+        void OnDisable() => MissionEvents.MissionRestarted -= ResetForRestart;
+
         void Reset()
         {
             animalInstanceId = gameObject.name;

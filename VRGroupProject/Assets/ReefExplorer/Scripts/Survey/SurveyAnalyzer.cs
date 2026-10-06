@@ -20,7 +20,8 @@ namespace ReefExplorer.Survey
                     ? baseline.Disclaimer
                     : "Simulated educational data only.",
                 missionComplete = false,
-                waterSampleCollected = current != null && current.waterSampleCollected
+                waterSampleCollected = current != null && current.waterSampleCollected,
+                buoyRestored = current != null && current.buoyRestored
             };
 
             var requiredZoneCount = requiredZones != null ? requiredZones.Count : 0;
@@ -73,6 +74,7 @@ namespace ReefExplorer.Survey
             BuildRows(result, current, baseline, required);
 
             result.missionComplete =
+                result.buoyRestored &&
                 result.waterSampleCollected &&
                 result.missingRequiredSpecies.Count == 0 &&
                 result.zoneCoveragePercent >= 99.9f;
@@ -177,6 +179,10 @@ namespace ReefExplorer.Survey
             sb.Append("Survey area coverage: ")
                 .Append(result.zoneCoveragePercent.ToString("0"))
                 .Append("%. ");
+
+            sb.Append(result.buoyRestored
+                ? "Buoy signal restored. "
+                : "Buoy still silent. ");
 
             sb.Append(result.waterSampleCollected
                 ? "Water sample collected. "

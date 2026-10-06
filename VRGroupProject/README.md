@@ -1,111 +1,90 @@
-# Reef Explorer — The Missing Survey
+# Reef Rescue — The Silent Signal
 
-Unity 6 (6000.6.4f1) underwater VR coursework project using URP, Input System, XR Interaction Toolkit 3.6.1 and OpenXR.
+Unity **6000.6.4f1** underwater VR coursework project (URP, Input System, XR Interaction Toolkit **3.6.1**, OpenXR **1.18.0**).
 
-## Quick start
+Folder for custom work: `Assets/ReefExplorer/`.
 
-1. Open this folder in **Unity Hub** with editor **6000.6.4f1**.
-2. Wait for scripts to compile.
-3. In the menu bar click:
-   - **Reef Explorer → 0. Run Full Setup (Fix Grab + Build Scene)**
-   - **Reef Explorer → 4. Apply Cute Fish Pack Models** (uses `Assets/Cute Fish Pack - Feb 2020`, CC0)
-4. Test grab:
-   - Open `Assets/VRTestScene`
-   - Press Play
-   - Hold **Space** (right controller), aim at the Cube, press **G** to grab
-5. Play the mission:
-   - Open `Assets/ReefExplorer/Scenes/ReefExplorer.unity`
-   - Press Play
-   - Choose **Desktop** or **VR / Simulator**, then **Start Dive**
+## What you do in the mission
 
-## Simulator controls (from installed XR Device Simulator input actions)
+1. Choose **Desktop** or **VR / Simulator**.
+2. Complete a short training (move, grab, activate).
+3. Pick up the **Scanner** and **SampleBottle**.
+4. Walk to **Reef Buoy Seven**, pick up the **PowerCell**, insert it into the buoy socket.
+5. Scan clownfish, sea turtle and ray in three reef areas.
+6. Fill the bottle at the sample point, return it to the station holder, **Submit Log**.
+7. Read the simulated survey comparison and Credits.
 
-These are the actual bindings in  
-`Assets/Samples/.../XR Device Simulator/XR Device Simulator Controls.inputactions` and  
-`.../XR Device Controller Controls.inputactions`:
+## Exact Unity steps (beginner)
 
-| Action | Binding | Meaning |
-|--------|---------|---------|
-| Manipulate Left | Left Shift (hold) | Move/aim left controller with mouse |
-| Manipulate Right | Space (hold) | Move/aim right controller with mouse |
-| Mouse Delta | Mouse move | Translate or rotate active device |
-| Toggle mouse transform mode | R | Switch translate/rotate mouse mode |
-| Grip / Select (grab) | **G** | Grab hovered/pointed interactable |
-| Trigger / Activate | **Mouse Left Button** | Activate held tool (scanner) |
-| Primary / Secondary | B / N | Controller buttons |
-| WASD / QE | Move simulated devices / height | Not player locomotion |
+1. Open the project in **Unity Hub** with editor **6000.6.4f1**.
+2. Wait until the bottom-right spinner finishes (scripts compile).
+3. Click menu **Reef Explorer → 0. Run Full Setup (Fix Grab + Build Scene)**.  
+   Expected: dialog says Done. Scene `Assets/ReefExplorer/Scenes/ReefExplorer.unity` is created/refreshed.
+4. Click **Reef Explorer → 6. Validate ReefExplorer Scene**.  
+   Expected: list of OK lines for buoy, power cell, scanner, zones.
+5. Open **Assets/ReefExplorer/Scenes/ReefExplorer.unity** (double-click in Project).
+6. Press **Play**.
+7. Click **Desktop**, then **Start Dive**.
+8. Follow the on-screen objective text until mission complete.
 
-Important: **mouse click is Activate, not Grab**.
+**Important:** Stop Play before using Reef Explorer menus 0–6.
 
-## Desktop controls
+## Desktop controls (shown in HUD after mode select)
 
-| Action | Key |
-|--------|-----|
+| Action | Binding |
+|--------|---------|
 | Move | WASD |
-| Look | Hold Right Mouse (or locked cursor) |
+| Look | Hold Right Mouse |
 | Pick up | E or Left Click |
 | Activate scanner | Hold Left Click while holding scanner |
 | Drop | Q |
 | Fill bottle in sample zone | E |
-| Pause | Esc |
+| Hotkeys | 1 practice tool, 2 scanner, 3 bottle, 4 power cell |
+| Pause / settings | Esc |
 
-## Project layout
+## VR / Simulator controls (Starter Assets Device Simulator)
 
-Custom content lives under `Assets/ReefExplorer/`:
+| Action | Binding |
+|--------|---------|
+| Aim right controller | Hold **Space** + mouse |
+| Aim left controller | Hold **Left Shift** + mouse |
+| Grab | **G** |
+| Activate | **Mouse Left Button** |
+| Teleport / turn | Starter Assets locomotion on XR Origin |
 
-- `Scripts/` mission, interaction, input, survey, UI, audio
-- `Editor/` scene/grab setup menus
-- `Scenes/` generated `ReefExplorer.unity`
-- `Data/` species + baseline ScriptableObjects
-- `Docs/` project notes and test checklist
+Grab is **G**, not mouse click.
 
-`Assets/VRTestScene.unity` remains the grab/diagnostics scene.
+## Diagnostic grab scene
 
-## Tracking origin / comfort
+1. Open `Assets/VRTestScene`.
+2. Play → hold **Space**, aim at Cube, press **G**.
 
-Uses the Starter Assets XR Origin defaults (teleport + snap turn). Suitable for seated or standing play. Comfort and presence were **not** validated on a physical headset in the automated setup session.
+## Build Windows standalone
 
-## Survey analysis
+1. Run setup menu 0 once (not in Play Mode).
+2. **File → Build Settings**.
+3. Ensure `Assets/ReefExplorer/Scenes/ReefExplorer.unity` is checked.
+4. Platform **Windows**, **Build**.
+5. Run the `.exe` and complete the mission with keyboard/mouse (no headset).
 
-Baseline and species definitions are ScriptableObjects. Completing the mission writes a JSON dive log to:
+## Docs
 
-`%userprofile%/AppData/LocalLow/<Company>/<Product>/DiveLogs/`
+- `Assets/ReefExplorer/Docs/REQUIREMENTS_CHECKLIST.md`
+- `Assets/ReefExplorer/Docs/TEST_CHECKLIST.md`
+- `Assets/ReefExplorer/Docs/PRESENTATION_OUTLINE.md`
+- `Assets/ReefExplorer/Docs/AI_ASSISTANCE.md`
+- `Assets/ReefExplorer/Docs/ASSET_CREDITS.md`
+- `Assets/ReefExplorer/Docs/PROJECT_NOTES.md`
 
-Results are labelled as simulated educational data.
+## Spatial audio note
 
-## Build (Windows)
+World sounds use ordinary Unity 3D `AudioSource` / `PlayClipAtPoint` positioning. A dedicated binaural spatializer plugin is **not** configured.
 
-1. Run the Reef Explorer setup menu once.
-2. **File → Build Settings**
-3. Ensure `Assets/ReefExplorer/Scenes/ReefExplorer.unity` is enabled (setup adds it).
-4. Platform: Windows
-5. **Build** to a folder outside the repo (for example `C:\Builds\ReefExplorer\`)
-6. Launch the `.exe` and complete the mission in Desktop mode
+## Group ownership suggestion (3–4 people)
 
-Build output folders should stay out of git (`Build/`, `Builds/` are ignored).
+1. XR/desktop input + grab/sockets  
+2. Environment, animals, audio  
+3. Mission flow + survey analysis  
+4. UI, docs, testing, build  
 
-## Tests
-
-- Edit Mode tests: `Assets/ReefExplorer/Tests`
-- Manual checklist: `Assets/ReefExplorer/Docs/TEST_CHECKLIST.md`
-- Design notes: `Assets/ReefExplorer/Docs/PROJECT_NOTES.md`
-
-## Suggested group ownership
-
-1. **Interaction / XR** — grab, scanner, sockets, simulator docs  
-2. **Environment / audio** — scene art pass, mixer, particles  
-3. **Mission / data** — state machine, survey analysis, JSON  
-4. **UI / testing** — panels, checklist, Windows build verification  
-
-## Milestone commit suggestions
-
-1. Fix VRTestScene grab + diagnostics  
-2. Mission scripts + survey data model  
-3. Generated ReefExplorer scene + tools  
-4. Desktop mode + UI polish  
-5. Docs, checklist, build instructions  
-
-## Optional .NET IntelliSense fix
-
-If Cursor shows `Assembly-CSharp.csproj` load warnings, install the  
-[.NET Framework 4.7.1 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net471).
+Adjust to your actual team. Do not invent completed work.

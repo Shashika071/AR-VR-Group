@@ -18,19 +18,32 @@ namespace ReefExplorer.UI
         [SerializeField] Button quitButton;
         [SerializeField] PlayerModeSelector modeSelector;
         [SerializeField] Text resultsText;
+        [SerializeField] GameObject briefingPanel;
+        [SerializeField] GameObject resultsPanel;
 
         void Awake()
         {
             if (titleText != null)
-                titleText.text = "Reef Explorer — The Missing Survey";
+                titleText.text = "Reef Rescue — The Silent Signal";
 
             if (bodyText != null)
             {
                 bodyText.text =
-                    "You are a new marine research diver. Survey three reef zones, scan clownfish, turtle and ray, " +
-                    "collect a water sample, return the bottle, then submit your dive log.\n\n" +
-                    "Baseline comparison uses simulated educational data only.";
+                    "Welcome, diver. Reef Buoy Seven has gone silent.\n\n" +
+                    "Goals:\n" +
+                    "1) Restore the buoy (insert the power cell)\n" +
+                    "2) Record wildlife (clownfish, turtle, ray)\n" +
+                    "3) Collect and return a water sample\n\n" +
+                    "Choose Desktop or VR, then Start Dive.\n" +
+                    "Baseline survey data is simulated for learning.";
             }
+
+            if (briefingPanel != null)
+                briefingPanel.SetActive(true);
+            if (resultsPanel != null)
+                resultsPanel.SetActive(false);
+            if (submitButton != null)
+                submitButton.gameObject.SetActive(false);
 
             Wire(startButton, () => MissionController.Instance?.StartDive());
             Wire(xrButton, () => modeSelector?.ChooseXr());
@@ -56,13 +69,25 @@ namespace ReefExplorer.UI
         void OnState(MissionState _, MissionState next)
         {
             if (submitButton != null)
+            {
+                var showSubmit = next == MissionState.SubmitLog || next == MissionState.Results;
+                submitButton.gameObject.SetActive(showSubmit);
                 submitButton.interactable = next == MissionState.SubmitLog;
+            }
+
+            if (next == MissionState.Results || next == MissionState.Credits)
+            {
+                if (briefingPanel != null)
+                    briefingPanel.SetActive(false);
+                if (resultsPanel != null)
+                    resultsPanel.SetActive(true);
+            }
 
             if (resultsText != null && next == MissionState.Credits)
             {
                 resultsText.text +=
-                    "\n\nCredits: Student team project. Unity URP + XR Interaction Toolkit + OpenXR. " +
-                    "Environment and animals use coursework primitives.";
+                    "\n\nCredits: Student team · Unity URP · XR Interaction Toolkit · OpenXR.\n" +
+                    "See Docs/ASSET_CREDITS.md and Docs/AI_ASSISTANCE.md.";
             }
         }
 
@@ -75,9 +100,21 @@ namespace ReefExplorer.UI
             if (comparison == null)
                 return;
 
+            var mc = MissionController.Instance;
+            if (briefingPanel != null)
+                briefingPanel.SetActive(false);
+            if (resultsPanel != null)
+                resultsPanel.SetActive(true);
+
             resultsText.text =
-                $"<b>Survey Results (simulated)</b>\n{comparison.plainLanguageSummary}\n\n" +
-                $"Saved dive log:\n{MissionController.Instance.LastSavedPath}\n\n{comparison.disclaimer}";
+                "<b>First mission complete</b>\n" +
+                "Your observations help the research team decide what to investigate next.\n\n" +
+                $"Buoy restored: {(mc.BuoyRestored ? "Yes" : "No")}\n" +
+                $"Species: {comparison.observedRequiredSpeciesCount}/{comparison.requiredSpeciesCount}\n" +
+                $"Water sample returned: {(mc.BottleReturned ? "Yes" : "No")}\n" +
+                $"Zone coverage: {comparison.zoneCoveragePercent:0}%\n\n" +
+                $"<b>Survey comparison (simulated)</b>\n{comparison.plainLanguageSummary}\n\n" +
+                $"Saved:\n{mc.LastSavedPath}\n\n{comparison.disclaimer}";
         }
 
         static void Wire(Button button, UnityEngine.Events.UnityAction action)
