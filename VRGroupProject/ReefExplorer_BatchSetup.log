@@ -1,0 +1,46 @@
+VBCSCompilerPreWarmer: watching VBCSCompiler (PID 29992)
+VBCSCompilerPreWarmer: pre-warm launched (dotnet PID 33980)
+VBCSCompiler prewarm took 25.34 ms
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.6/staging' branch; Version is '6000.6.4f1 (12bfff696524) revision 1228799'; Using compiler version '194234433'; Build Type 'Release'
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Admin" at "2026-10-05T22:55:28.1028501Z"
+OS: 'Windows 11  (10.0.26300) Professional' Language: 'en' Physical Memory: 15690 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+System  architecture: x64
+Process architecture: x64
+Date: 2026-10-05T22:55:28Z
+[Licensing::Client] Code 10 while verifying Licensing Client signature (process Id: 21816, path: "C:/Program Files/Unity Hub/UnityLicensingClient_V1/Unity.Licensing.Client.exe")
+[Licensing::Module] LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.18.3+d7ffd15
+  Session Id:              b76815dd8a05417cb63e9aa6be1aded4
+  Correlation Id:          5e6dbec1015ba0f78556195fdf4c6305
+  External correlation Id: 8984766989551157409
+  Machine Id:              kpg4S+V4P5si1pTa3Q9JWsIrKdw=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-Admin" (connect: 0.00s, validation: 0.00s, handshake: 0.11s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Admin-notifications" at "2026-10-05T22:55:28.2183992Z"
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 18968515822544-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.00
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Licensing Background thread has ended after 0.12s
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.6.4f1\Editor\Unity.exe
+-batchmode
+-nographics
+-quit
+-projectPath
+c:\Users\Admin\Desktop\AR-VR-Group\VRGroupProject
+-executeMethod
+ReefExplorer.EditorTools.ReefExplorerBatchMenus.RunFullSetup
+-logFile
+c:\Users\Admin\Desktop\AR-VR-Group\VRGroupProject\ReefExplorer_BatchSetup.log
+Successfully changed project path to: c:\Users\Admin\Desktop\AR-VR-Group\VRGroupProject
+C:/Users/Admin/Desktop/AR-VR-Group/VRGroupProject
+[ExitDontLaunchBugReporter] Exiting without the bug reporter. Application will exit with return code 1

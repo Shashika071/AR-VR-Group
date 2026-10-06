@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6eaefd92e9d9bd429a143091b9d61d0, type: 3}
+  m_Name: BaselineSurvey
+  m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.BaselineSurveyData
+  surveyLabel: Previous simulated survey (educational)
+  disclaimer: Simulated educational data only. Do not treat this as a real reef-health assessment.
+  entries:
+  - species: {fileID: 11400000, guid: 9c89f860c8e30994e822cca088af5003, type: 2}
+    zoneId: zone_coral
+    count: 2
+  - species: {fileID: 11400000, guid: 5db23d9827ca8574ab6dd957fc859815, type: 2}
+    zoneId: zone_turtle
+    count: 1
+  - species: {fileID: 11400000, guid: f63ef7ae7f4acda4d93b60240b8ca6b4, type: 2}
+    zoneId: zone_ray
+    count: 1
