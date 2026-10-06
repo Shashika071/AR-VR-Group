@@ -12,6 +12,7 @@ EditorBuildSettings:
     path: Assets/ReefExplorer/Scenes/ReefExplorer.unity
     guid: 2b2d42909bc81874e85d50b9337c2e7a
   m_configObjects:
+    com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 1268d2e39e9fe8a4489c85aa0a8292b8, type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 840c5a0988547d34f946a3e75748d779, type: 2}

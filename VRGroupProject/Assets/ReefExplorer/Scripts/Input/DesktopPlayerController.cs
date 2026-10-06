@@ -15,14 +15,18 @@ namespace ReefExplorer.Input
         [SerializeField] Transform cameraTransform;
         [SerializeField] float moveSpeed = 3.2f;
         [SerializeField] float lookSensitivity = 0.18f;
+        [SerializeField] float jumpSpeed = 5.5f;
+        [SerializeField] float gravity = -18f;
         [SerializeField] float interactRange = 6f;
         [SerializeField] float grabRadius = 3.5f;
         [SerializeField] Key interactKey = Key.E;
         [SerializeField] Key dropKey = Key.Q;
         [SerializeField] Key pauseKey = Key.Escape;
+        [SerializeField] Key jumpKey = Key.Space;
 
         CharacterController character;
         float pitch;
+        float verticalVelocity;
         bool lookEnabled;
         Rigidbody heldBody;
         Transform heldTransform;
@@ -30,7 +34,7 @@ namespace ReefExplorer.Input
         readonly Vector3 heldLocalOffset = new Vector3(0.28f, -0.18f, 0.45f);
         readonly Vector3 heldScale = new Vector3(0.65f, 0.65f, 0.65f);
         Vector3 heldOriginalScale = Vector3.one;
-        string lookHint = "Right Click = toggle look | WASD move | E grab | Q drop";
+        string lookHint = "Right Click look | WASD move | Space jump | E grab | Q drop";
 
         public bool IsActiveController => isActiveAndEnabled;
 
@@ -50,8 +54,8 @@ namespace ReefExplorer.Input
             // If the player never pressed Desktop, still allow control when this object is the active one.
             EnsureDesktopModeIfNeeded();
 
-            if (MissionController.Instance != null &&
-                MissionController.Instance.PlayMode == PlayModeType.XR)
+            // Allow WASD whenever this DesktopPlayer is active (do not freeze if PlayMode says XR).
+            if (!isActiveAndEnabled)
                 return;
 
             if (Keyboard.current != null && Keyboard.current[pauseKey].wasPressedThisFrame)
@@ -90,6 +94,7 @@ namespace ReefExplorer.Input
                 (Keyboard.current != null &&
                  (Keyboard.current.wKey.isPressed || Keyboard.current.aKey.isPressed ||
                   Keyboard.current.sKey.isPressed || Keyboard.current.dKey.isPressed ||
+                  Keyboard.current[jumpKey].wasPressedThisFrame ||
                   Keyboard.current[interactKey].wasPressedThisFrame)) ||
                 (Mouse.current != null && Mouse.current.rightButton.isPressed);
 
@@ -126,19 +131,38 @@ namespace ReefExplorer.Input
 
         void Move()
         {
-            if (Keyboard.current == null)
+            if (character == null)
                 return;
 
             var input = Vector2.zero;
-            if (Keyboard.current.wKey.isPressed) input.y += 1f;
-            if (Keyboard.current.sKey.isPressed) input.y -= 1f;
-            if (Keyboard.current.dKey.isPressed) input.x += 1f;
-            if (Keyboard.current.aKey.isPressed) input.x -= 1f;
-            if (input.sqrMagnitude < 0.01f)
-                return;
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.wKey.isPressed) input.y += 1f;
+                if (Keyboard.current.sKey.isPressed) input.y -= 1f;
+                if (Keyboard.current.dKey.isPressed) input.x += 1f;
+                if (Keyboard.current.aKey.isPressed) input.x -= 1f;
+            }
 
-            var move = (transform.right * input.x + transform.forward * input.y).normalized;
-            character.SimpleMove(move * moveSpeed);
+            var grounded = character.isGrounded;
+            if (grounded && verticalVelocity < 0f)
+                verticalVelocity = -2f;
+
+            if (Keyboard.current != null &&
+                Keyboard.current[jumpKey].wasPressedThisFrame &&
+                grounded)
+            {
+                verticalVelocity = jumpSpeed;
+            }
+
+            verticalVelocity += gravity * Time.deltaTime;
+
+            var planar = Vector3.zero;
+            if (input.sqrMagnitude > 0.01f)
+                planar = (transform.right * input.x + transform.forward * input.y).normalized * moveSpeed;
+
+            var motion = planar;
+            motion.y = verticalVelocity;
+            character.Move(motion * Time.deltaTime);
         }
 
         void HandleInteract()
@@ -420,8 +444,8 @@ namespace ReefExplorer.Input
             else
             {
                 lookHint = lookEnabled
-                    ? "LOOK ON — move mouse to look | Right Click again to stop | E grab | 1/2/3 tools"
-                    : "Right Click once to look around | WASD move | E grab | 1/2/3 tools";
+                    ? "LOOK ON — move mouse to look | Right Click again to stop | Space jump | E grab"
+                    : "Right Click look | WASD move | Space jump | E grab | 1/2/3 tools";
             }
         }
 

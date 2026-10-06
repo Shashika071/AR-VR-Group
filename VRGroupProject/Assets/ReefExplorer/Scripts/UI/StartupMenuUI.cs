@@ -228,7 +228,7 @@ namespace ReefExplorer.UI
             if (objectiveHudText != null)
             {
                 objectiveHudText.text =
-                    "OBJECTIVE: Move with WASD. Look with Right Mouse. Grab with E. Keys 1/2/3 pick tools. Press H to hide this bar.";
+                    "OBJECTIVE: Move with WASD. Space to jump. Look with Right Mouse. Grab with E. Keys 1/2/3 pick tools. Press H to hide this bar.";
             }
         }
 

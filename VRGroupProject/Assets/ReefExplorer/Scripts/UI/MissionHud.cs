@@ -127,7 +127,7 @@ namespace ReefExplorer.UI
                 PlayModeType.XR =>
                     "VR: Teleport + snap turn | Space/Shift aim | G grab | Click activate",
                 PlayModeType.Desktop =>
-                    "Desktop: WASD | Right Mouse look | E grab | Click scanner | Q drop | Esc pause",
+                    "Desktop: WASD | Space jump | Right Mouse look | E grab | Click scanner | Q drop | Esc pause",
                 _ => string.Empty
             };
         }

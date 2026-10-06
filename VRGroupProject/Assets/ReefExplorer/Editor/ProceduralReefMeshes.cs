@@ -38,6 +38,206 @@ namespace ReefExplorer.EditorTools
             return root;
         }
 
+        /// <summary>
+        /// Walk-through natural rock arch / hole.
+        /// Visual = irregular boulder clumps (not cubes). Collision = invisible boxes on sides/top only.
+        /// </summary>
+        public static GameObject CreateRockArch(
+            string name, Transform parent, Vector3 pos, Material mat,
+            float width = 2.6f, float height = 2.7f, float thickness = 1.15f)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent);
+            root.transform.position = pos;
+
+            var half = width * 0.5f;
+
+            // Invisible collision only (keeps hole clear for the player).
+            AddHiddenCollider(root.transform, "Col_PillarL",
+                new Vector3(-half, height * 0.45f, 0f),
+                new Vector3(thickness * 0.9f, height * 0.95f, thickness));
+            AddHiddenCollider(root.transform, "Col_PillarR",
+                new Vector3(half, height * 0.45f, 0f),
+                new Vector3(thickness * 0.9f, height * 0.95f, thickness));
+            AddHiddenCollider(root.transform, "Col_Lintel",
+                new Vector3(0f, height + thickness * 0.2f, 0f),
+                new Vector3(width + thickness, thickness * 0.75f, thickness * 1.1f));
+
+            // Natural boulder stacks for each pillar + curved top.
+            BuildBoulderStack(root.transform, "PillarL",
+                new Vector3(-half, 0f, 0f), height, thickness, mat, curveInward: 1f);
+            BuildBoulderStack(root.transform, "PillarR",
+                new Vector3(half, 0f, 0f), height, thickness, mat, curveInward: -1f);
+            BuildArchRoof(root.transform, width, height, thickness, mat);
+
+            return root;
+        }
+
+        /// <summary>Short rocky tunnel you can walk through.</summary>
+        public static GameObject CreateRockTunnel(
+            string name, Transform parent, Vector3 pos, Material mat, float length = 3.4f)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent);
+            root.transform.position = pos;
+
+            var a = CreateRockArch("MouthA", root.transform, Vector3.zero, mat, 2.8f, 2.8f, 1.15f);
+            a.transform.localPosition = new Vector3(0f, 0f, -length * 0.35f);
+
+            var b = CreateRockArch("MouthB", root.transform, Vector3.zero, mat, 2.8f, 2.8f, 1.15f);
+            b.transform.localPosition = new Vector3(0f, 0f, length * 0.35f);
+
+            // Invisible side/roof colliders for the tunnel length.
+            AddHiddenCollider(root.transform, "Col_WallL",
+                new Vector3(-1.55f, 1.35f, 0f),
+                new Vector3(0.9f, 2.6f, length * 0.85f));
+            AddHiddenCollider(root.transform, "Col_WallR",
+                new Vector3(1.55f, 1.35f, 0f),
+                new Vector3(0.9f, 2.6f, length * 0.85f));
+            AddHiddenCollider(root.transform, "Col_Roof",
+                new Vector3(0f, 2.95f, 0f),
+                new Vector3(3.3f, 0.7f, length * 0.9f));
+
+            // Rocky side walls (boulder clumps, not flat slabs).
+            BuildBoulderWall(root.transform, "WallL",
+                new Vector3(-1.55f, 0f, 0f), length, 2.7f, 1.0f, mat);
+            BuildBoulderWall(root.transform, "WallR",
+                new Vector3(1.55f, 0f, 0f), length, 2.7f, 1.0f, mat);
+            BuildBoulderWall(root.transform, "RoofWall",
+                new Vector3(0f, 2.5f, 0f), length * 0.9f, 0.9f, 1.4f, mat, horizontal: true);
+
+            return root;
+        }
+
+        static void AddHiddenCollider(Transform parent, string name, Vector3 localPos, Vector3 scale)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = scale;
+            var r = go.GetComponent<Renderer>();
+            if (r != null)
+                Object.DestroyImmediate(r);
+            // BoxCollider remains for gameplay.
+        }
+
+        static void BuildBoulderStack(
+            Transform parent, string name, Vector3 basePos, float height, float thickness, Material mat, float curveInward)
+        {
+            var stack = new GameObject(name);
+            stack.transform.SetParent(parent, false);
+            stack.transform.localPosition = basePos;
+
+            var layers = 6;
+            for (var i = 0; i < layers; i++)
+            {
+                var t = i / (float)(layers - 1);
+                var y = 0.35f + t * height;
+                // Lean slightly toward the opening for a natural arch silhouette.
+                var x = curveInward * Mathf.Lerp(0.05f, 0.35f, t * t) * thickness;
+
+                for (var j = 0; j < 3; j++)
+                {
+                    var boulder = GameObject.CreatePrimitive(
+                        j % 2 == 0 ? PrimitiveType.Sphere : PrimitiveType.Capsule);
+                    boulder.name = $"Boulder_{i}_{j}";
+                    boulder.transform.SetParent(stack.transform, false);
+                    boulder.transform.localPosition = new Vector3(
+                        x + Random.Range(-0.18f, 0.18f) * thickness,
+                        y + Random.Range(-0.12f, 0.12f),
+                        Random.Range(-0.28f, 0.28f) * thickness);
+                    boulder.transform.localRotation = Quaternion.Euler(
+                        Random.Range(0f, 35f), Random.Range(0f, 360f), Random.Range(0f, 35f));
+                    var s = thickness * Random.Range(0.45f, 0.85f);
+                    boulder.transform.localScale = new Vector3(
+                        s * Random.Range(0.8f, 1.2f),
+                        s * Random.Range(0.55f, 1.0f),
+                        s * Random.Range(0.8f, 1.2f));
+                    boulder.GetComponent<Renderer>().sharedMaterial = mat;
+                    Object.DestroyImmediate(boulder.GetComponent<Collider>());
+                }
+            }
+        }
+
+        static void BuildArchRoof(Transform parent, float width, float height, float thickness, Material mat)
+        {
+            var roof = new GameObject("ArchRoof");
+            roof.transform.SetParent(parent, false);
+
+            // Arc of boulders over the opening (looks like a real sea cave mouth).
+            const int segments = 7;
+            for (var i = 0; i < segments; i++)
+            {
+                var u = i / (float)(segments - 1); // 0..1
+                var angle = Mathf.Lerp(-70f, 70f, u) * Mathf.Deg2Rad;
+                var radius = width * 0.55f;
+                var x = Mathf.Sin(angle) * radius;
+                var y = height + Mathf.Cos(angle) * (thickness * 0.55f) + thickness * 0.15f;
+
+                for (var j = 0; j < 2; j++)
+                {
+                    var boulder = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    boulder.name = $"RoofRock_{i}_{j}";
+                    boulder.transform.SetParent(roof.transform, false);
+                    boulder.transform.localPosition = new Vector3(
+                        x + Random.Range(-0.12f, 0.12f),
+                        y + Random.Range(-0.08f, 0.12f),
+                        Random.Range(-0.3f, 0.3f) * thickness);
+                    boulder.transform.localRotation = Quaternion.Euler(
+                        Random.Range(0f, 40f), Random.Range(0f, 360f), Random.Range(0f, 40f));
+                    var s = thickness * Random.Range(0.5f, 0.9f);
+                    boulder.transform.localScale = new Vector3(s * 1.15f, s * 0.75f, s);
+                    boulder.GetComponent<Renderer>().sharedMaterial = mat;
+                    Object.DestroyImmediate(boulder.GetComponent<Collider>());
+                }
+            }
+        }
+
+        static void BuildBoulderWall(
+            Transform parent, string name, Vector3 basePos, float length, float height, float depth,
+            Material mat, bool horizontal = false)
+        {
+            var wall = new GameObject(name);
+            wall.transform.SetParent(parent, false);
+            wall.transform.localPosition = basePos;
+
+            var count = Mathf.Clamp(Mathf.RoundToInt(length * 2.2f), 5, 12);
+            for (var i = 0; i < count; i++)
+            {
+                var t = count == 1 ? 0.5f : i / (float)(count - 1);
+                var boulder = GameObject.CreatePrimitive(
+                    i % 2 == 0 ? PrimitiveType.Sphere : PrimitiveType.Capsule);
+                boulder.name = $"WallRock_{i}";
+                boulder.transform.SetParent(wall.transform, false);
+
+                if (horizontal)
+                {
+                    boulder.transform.localPosition = new Vector3(
+                        Random.Range(-depth * 0.4f, depth * 0.4f),
+                        Random.Range(0f, height * 0.5f),
+                        Mathf.Lerp(-length * 0.45f, length * 0.45f, t));
+                }
+                else
+                {
+                    boulder.transform.localPosition = new Vector3(
+                        Random.Range(-0.15f, 0.15f),
+                        Random.Range(0.35f, height),
+                        Mathf.Lerp(-length * 0.45f, length * 0.45f, t) + Random.Range(-0.15f, 0.15f));
+                }
+
+                boulder.transform.localRotation = Quaternion.Euler(
+                    Random.Range(0f, 40f), Random.Range(0f, 360f), Random.Range(0f, 40f));
+                var s = Random.Range(0.55f, 1.05f);
+                boulder.transform.localScale = new Vector3(
+                    s * Random.Range(0.85f, 1.25f),
+                    s * Random.Range(0.55f, 1.0f),
+                    s * Random.Range(0.85f, 1.25f));
+                boulder.GetComponent<Renderer>().sharedMaterial = mat;
+                Object.DestroyImmediate(boulder.GetComponent<Collider>());
+            }
+        }
+
         public static GameObject CreateBranchingCoral(string name, Transform parent, Vector3 pos, Material mat)
         {
             var root = new GameObject(name);
@@ -146,16 +346,44 @@ namespace ReefExplorer.EditorTools
             root.transform.SetParent(parent);
             root.transform.position = pos;
 
-            for (var i = 0; i < 3; i++)
+            // Flat ribbon blades (not thin upright sticks).
+            for (var i = 0; i < 5; i++)
             {
-                var blade = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 blade.name = $"Blade_{i}";
                 blade.transform.SetParent(root.transform, false);
-                blade.transform.localPosition = new Vector3(Random.Range(-0.08f, 0.08f), 0.45f, Random.Range(-0.08f, 0.08f));
-                blade.transform.localRotation = Quaternion.Euler(Random.Range(-12f, 12f), i * 40f, Random.Range(-8f, 8f));
-                blade.transform.localScale = new Vector3(0.06f, Random.Range(0.4f, 0.7f), 0.04f);
+                blade.transform.localPosition = new Vector3(Random.Range(-0.12f, 0.12f), 0.4f, Random.Range(-0.12f, 0.12f));
+                blade.transform.localRotation = Quaternion.Euler(
+                    Random.Range(-25f, 25f), i * 28f + Random.Range(-8f, 8f), Random.Range(-18f, 18f));
+                blade.transform.localScale = new Vector3(
+                    Random.Range(0.08f, 0.14f),
+                    Random.Range(0.55f, 0.95f),
+                    Random.Range(0.01f, 0.02f));
                 blade.GetComponent<Renderer>().sharedMaterial = mat;
                 Object.DestroyImmediate(blade.GetComponent<Collider>());
+            }
+
+            return root;
+        }
+
+        public static GameObject CreateTubeCoral(string name, Transform parent, Vector3 pos, Material mat)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent);
+            root.transform.position = pos;
+
+            for (var i = 0; i < 5; i++)
+            {
+                var tube = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                tube.name = $"Tube_{i}";
+                tube.transform.SetParent(root.transform, false);
+                tube.transform.localPosition = new Vector3(
+                    Random.Range(-0.2f, 0.2f),
+                    Random.Range(0.15f, 0.35f),
+                    Random.Range(-0.2f, 0.2f));
+                tube.transform.localScale = new Vector3(0.08f, Random.Range(0.18f, 0.35f), 0.08f);
+                tube.GetComponent<Renderer>().sharedMaterial = mat;
+                Object.DestroyImmediate(tube.GetComponent<Collider>());
             }
 
             return root;

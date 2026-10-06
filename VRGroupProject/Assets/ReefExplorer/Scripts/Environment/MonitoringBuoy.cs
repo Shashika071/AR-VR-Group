@@ -82,12 +82,10 @@ namespace ReefExplorer.Environment
                 signalSource.Stop();
                 signalSource.loop = false;
             }
-            else if (!signalSource.isPlaying && signalSource.clip != null)
+            else if (signalSource.isPlaying)
             {
-                signalSource.loop = true;
-                signalSource.spatialBlend = 1f;
-                signalSource.volume = 0.35f;
-                signalSource.Play();
+                // Looping buoy beep disabled — was too noisy during playtests.
+                signalSource.Stop();
             }
         }
     }

@@ -49,10 +49,10 @@ namespace ReefExplorer.EditorTools
             RenderSettings.skybox = null;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.035f;
-            RenderSettings.fogColor = new Color(0.02f, 0.22f, 0.32f);
+            RenderSettings.fogDensity = 0.13f;
+            RenderSettings.fogColor = new Color(0.04f, 0.20f, 0.26f);
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.08f, 0.22f, 0.3f);
+            RenderSettings.ambientLight = new Color(0.03f, 0.11f, 0.15f);
 
             CreateLight();
             var systems = CreateSystems(species, baseline);
@@ -74,6 +74,10 @@ namespace ReefExplorer.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
             AssetDatabase.SaveAssets();
+
+            // Author compact tropical reef art on top of mission systems.
+            UnderwaterEnvironmentBuilder.BuildIntoOpenScene(showDialog: false);
+
             Debug.Log("[ReefExplorer] Scene built at Assets/ReefExplorer/Scenes/ReefExplorer.unity");
         }
 
@@ -360,47 +364,84 @@ namespace ReefExplorer.EditorTools
                     new Vector3(0.55f, 0.04f, 0.3f), mats.accent);
             }
 
-            PopulateReefPatch(reefRoot.transform, new Vector3(-10f, 0f, 14f), mats, coralHeavy: true, plants: false);
-            PopulateReefPatch(reefRoot.transform, new Vector3(0f, 0f, 22f), mats, coralHeavy: false, plants: true);
-            PopulateReefPatch(reefRoot.transform, new Vector3(11f, 0f, 16f), mats, coralHeavy: false, plants: false);
-            PopulateReefPatch(reefRoot.transform, new Vector3(0f, 0f, 9f), mats, coralHeavy: true, plants: true);
+            PopulateReefPatch(reefRoot.transform, new Vector3(-8f, 0f, 12f), mats, coralHeavy: true, plants: true);
+            PopulateReefPatch(reefRoot.transform, new Vector3(0f, 0f, 18f), mats, coralHeavy: true, plants: true);
+            PopulateReefPatch(reefRoot.transform, new Vector3(8f, 0f, 13f), mats, coralHeavy: true, plants: false);
+            PopulateReefPatch(reefRoot.transform, new Vector3(0f, 0f, 8f), mats, coralHeavy: true, plants: true);
+            PopulateReefPatch(reefRoot.transform, new Vector3(-4f, 0f, 15f), mats, coralHeavy: true, plants: true);
+            PopulateReefPatch(reefRoot.transform, new Vector3(4f, 0f, 10f), mats, coralHeavy: true, plants: true);
 
-            // Ambient fish (not scan targets).
-            for (var i = 0; i < 6; i++)
+            // Ambient fish from Assets/New_fish (not scan targets). Fake stylized fish removed.
+            var newFishPaths = new[]
             {
-                var fish = ProceduralReefMeshes.CreateStylizedFish($"ScenicFish_{i}", reefRoot.transform,
-                    new Vector3(Random.Range(-8f, 8f), Random.Range(0.8f, 1.8f), Random.Range(8f, 22f)),
-                    i % 2 == 0 ? mats.clown : mats.scanner, Random.Range(0.7f, 1.1f));
+                "Assets/New_fish/Angelfish.obj",
+                "Assets/New_fish/Betta_Fish.obj",
+                "Assets/New_fish/Undualte_Triggerfish.FBX",
+                "Assets/New_fish/Protomelas Spilonotus.FBX",
+                "Assets/New_fish/Aligator Gar.FBX",
+            };
+            for (var i = 0; i < 8; i++)
+            {
+                var path = newFishPaths[i % newFishPaths.Length];
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null)
+                    continue;
+
+                var pos = new Vector3(Random.Range(-8f, 8f), Random.Range(0.8f, 1.8f), Random.Range(6f, 18f));
+                var fish = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                if (fish == null)
+                    fish = Object.Instantiate(prefab);
+                fish.name = $"ScenicFish_{i}";
+                fish.transform.SetParent(reefRoot.transform);
+                fish.transform.position = pos;
+                foreach (var col in fish.GetComponentsInChildren<Collider>(true))
+                    Object.DestroyImmediate(col);
+
+                // Fit to ~0.4m max axis so huge OBJ/FBX meshes look like reef fish.
+                fish.transform.localScale = Vector3.one;
+                var rends = fish.GetComponentsInChildren<Renderer>();
+                if (rends.Length > 0)
+                {
+                    var b = rends[0].bounds;
+                    for (var r = 1; r < rends.Length; r++)
+                        b.Encapsulate(rends[r].bounds);
+                    var cur = Mathf.Max(b.size.x, b.size.y, b.size.z);
+                    if (cur > 0.01f)
+                        fish.transform.localScale = Vector3.one * Mathf.Clamp(0.4f / cur, 0.01f, 8f);
+                }
+
+                fish.transform.rotation = Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
                 var wander = fish.AddComponent<AnimalWander>();
                 var wso = new SerializedObject(wander);
-                wso.FindProperty("center").vector3Value = fish.transform.position;
-                wso.FindProperty("extents").vector3Value = new Vector3(3f, 0.6f, 3f);
+                wso.FindProperty("center").vector3Value = pos;
+                wso.FindProperty("extents").vector3Value = new Vector3(2.5f, 0.5f, 2.5f);
                 wso.FindProperty("speed").floatValue = 0.4f;
+                wso.FindProperty("meshEulerOffset").vector3Value = new Vector3(-90f, 0f, 0f);
                 wso.ApplyModifiedPropertiesWithoutUndo();
             }
 
-            CreateBoundaryWall("Bound_North", new Vector3(0f, 3f, 34f), new Vector3(50f, 8f, 1f));
-            CreateBoundaryWall("Bound_South", new Vector3(0f, 3f, -8f), new Vector3(50f, 8f, 1f));
-            CreateBoundaryWall("Bound_East", new Vector3(22f, 3f, 12f), new Vector3(1f, 8f, 50f));
-            CreateBoundaryWall("Bound_West", new Vector3(-22f, 3f, 12f), new Vector3(1f, 8f, 50f));
+            CreateBoundaryWall("Bound_North", new Vector3(0f, 3f, 22f), new Vector3(30f, 8f, 1f));
+            CreateBoundaryWall("Bound_South", new Vector3(0f, 3f, -4f), new Vector3(30f, 8f, 1f));
+            CreateBoundaryWall("Bound_East", new Vector3(13f, 3f, 10f), new Vector3(1f, 8f, 30f));
+            CreateBoundaryWall("Bound_West", new Vector3(-13f, 3f, 10f), new Vector3(1f, 8f, 30f));
         }
 
         static void PopulateReefPatch(Transform parent, Vector3 center, MaterialBag mats, bool coralHeavy, bool plants)
         {
-            for (var i = 0; i < 5; i++)
+            for (var i = 0; i < 8; i++)
             {
                 var a = Random.Range(0f, Mathf.PI * 2f);
-                var d = Random.Range(1.2f, 4f);
+                var d = Random.Range(0.8f, 3.2f);
                 ProceduralReefMeshes.CreateRock($"Rock_{center.x:0}_{i}", parent,
                     center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d),
                     Random.Range(0.6f, 1.3f), mats.rock);
             }
 
-            var coralCount = coralHeavy ? 6 : 3;
+            var coralCount = coralHeavy ? 10 : 5;
             for (var i = 0; i < coralCount; i++)
             {
                 var a = Random.Range(0f, Mathf.PI * 2f);
-                var d = Random.Range(0.8f, 3.5f);
+                var d = Random.Range(0.6f, 3f);
                 var p = center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d);
                 var kind = i % 3;
                 if (kind == 0)
@@ -414,7 +455,7 @@ namespace ReefExplorer.EditorTools
             if (!plants)
                 return;
 
-            for (var i = 0; i < 8; i++)
+            for (var i = 0; i < 12; i++)
             {
                 var a = Random.Range(0f, Mathf.PI * 2f);
                 var d = Random.Range(0.6f, 3.8f);
@@ -434,14 +475,17 @@ namespace ReefExplorer.EditorTools
 
         static void CreateZonesAndAnimals(MaterialBag mats, SpeciesDefinition[] species)
         {
-            // Distinct areas, short walks from the station/buoy.
-            CreateSurveyZone("Zone_Coral", "zone_coral", "CORAL GARDEN", new Vector3(-10f, 0f, 14f), mats, species[0], AnimalKind.Clown);
-            CreateSurveyZone("Zone_Turtle", "zone_turtle", "SEAGRASS CROSSING", new Vector3(0f, 0f, 22f), mats, species[1], AnimalKind.Turtle);
-            CreateSurveyZone("Zone_Ray", "zone_ray", "SANDY PASSAGE", new Vector3(11f, 0f, 16f), mats, species[2], AnimalKind.Ray);
+            // Compact reef — short walks, zones stay in view of each other.
+            CreateSurveyZone("Zone_Coral", "zone_coral", "CORAL GARDEN", new Vector3(-8f, 0f, 12f), mats, species[0], AnimalKind.Clown);
+            CreateSurveyZone("Zone_Turtle", "zone_turtle", "SEAGRASS CROSSING", new Vector3(0f, 0f, 18f), mats, species[1], AnimalKind.Turtle);
+            CreateSurveyZone("Zone_Ray", "zone_ray", "SANDY PASSAGE", new Vector3(8f, 0f, 13f), mats, species[2], AnimalKind.Ray);
 
-            var sample = CreateTrigger("SampleZone", null, new Vector3(6f, 0.6f, 18f), new Vector3(2.2f, 1.4f, 2.2f));
+            var sample = CreateTrigger("SampleZone", null, new Vector3(5f, 0.6f, 16f), new Vector3(2.2f, 1.4f, 2.2f));
             sample.AddComponent<SampleZone>();
-            CreateCube("SampleMarker", sample.transform, Vector3.zero, new Vector3(2f, 0.05f, 2f), mats.accent);
+            var sampleMarker = CreateCube("SampleMarker", sample.transform, Vector3.zero, new Vector3(2f, 0.05f, 2f), mats.accent);
+            var smR = sampleMarker.GetComponent<Renderer>();
+            if (smR != null)
+                smR.enabled = false;
             var sampleLabel = CreateWorldText(sample.transform, "WATER SAMPLE POINT\nHold bottle + press E / Trigger", 0.07f, TextAnchor.LowerCenter);
             sampleLabel.localPosition = new Vector3(0f, 1.2f, 0f);
             sampleLabel.rotation = Quaternion.identity;
@@ -453,8 +497,12 @@ namespace ReefExplorer.EditorTools
         {
             var zone = new GameObject(name);
             zone.transform.position = pos;
-            CreateCube("ZonePad", zone.transform, new Vector3(0f, 0.02f, 0f), new Vector3(5.5f, 0.04f, 5.5f),
+            // Invisible pad (trigger zones still work). Visible coloured tiles looked fake.
+            var pad = CreateCube("ZonePad", zone.transform, new Vector3(0f, 0.02f, 0f), new Vector3(5.5f, 0.04f, 5.5f),
                 kind == AnimalKind.Clown ? mats.coral : kind == AnimalKind.Turtle ? mats.plant : mats.sand);
+            var padR = pad.GetComponent<Renderer>();
+            if (padR != null)
+                padR.enabled = false;
             var trigger = CreateTrigger("ZoneTrigger", zone.transform, new Vector3(0f, 1.5f, 0f), new Vector3(6.5f, 3f, 6.5f));
             var zt = trigger.AddComponent<ZoneTrigger>();
             var zso = new SerializedObject(zt);

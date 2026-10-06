@@ -36,25 +36,15 @@ namespace ReefExplorer.Audio
         {
             GameAudio.Bind(this);
 
-            if (ambienceSource != null && ambienceLoop != null)
+            // Mute old procedural hum / buoy beep. Underwater.wav is applied at runtime.
+            if (stationHumSource != null)
             {
-                ambienceSource.clip = ambienceLoop;
-                ambienceSource.loop = true;
-                ambienceSource.spatialBlend = 0f;
-                if (ambienceGroup != null)
-                    ambienceSource.outputAudioMixerGroup = ambienceGroup;
-                ambienceSource.Play();
+                stationHumSource.Stop();
+                stationHumSource.enabled = false;
             }
 
-            if (stationHumSource != null && stationHumLoop != null)
-            {
-                stationHumSource.clip = stationHumLoop;
-                stationHumSource.loop = true;
-                stationHumSource.spatialBlend = 1f;
-                if (effectsGroup != null)
-                    stationHumSource.outputAudioMixerGroup = effectsGroup;
-                stationHumSource.Play();
-            }
+            if (ambienceSource != null)
+                ambienceSource.Stop();
         }
 
         public void SetAmbienceVolume(float linear01)
@@ -72,6 +62,44 @@ namespace ReefExplorer.Audio
         public void SetMuted(bool muted)
         {
             AudioListener.volume = muted ? 0f : 1f;
+        }
+
+        /// <summary>
+        /// Play a looping underwater ambience clip (e.g. Assets/underwater-sound/Underwater.wav).
+        /// </summary>
+        public void SetAmbienceClip(AudioClip clip, float volume = 0.45f)
+        {
+            if (clip == null)
+                return;
+
+            if (ambienceSource == null)
+            {
+                var go = new GameObject("AmbienceSource");
+                go.transform.SetParent(transform, false);
+                ambienceSource = go.AddComponent<AudioSource>();
+            }
+
+            ambienceLoop = clip;
+            ambienceSource.enabled = true;
+            ambienceSource.Stop();
+            ambienceSource.clip = clip;
+            ambienceSource.loop = true;
+            ambienceSource.spatialBlend = 0f;
+            ambienceSource.volume = volume;
+            if (ambienceGroup != null)
+                ambienceSource.outputAudioMixerGroup = ambienceGroup;
+            ambienceSource.Play();
+        }
+
+        public void StopLoopingAudio()
+        {
+            if (ambienceSource != null)
+                ambienceSource.Stop();
+            if (stationHumSource != null)
+            {
+                stationHumSource.Stop();
+                stationHumSource.enabled = false;
+            }
         }
 
         public void Play(Cue cue, Vector3 position, bool spatial = true)

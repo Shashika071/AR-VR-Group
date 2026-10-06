@@ -4,13 +4,14 @@ using UnityEngine.Rendering;
 namespace ReefExplorer.Environment
 {
     /// <summary>
-    /// Forces a coherent underwater look (no ordinary sky/horizon) at runtime.
+    /// Scuba-diver underwater look: murky green-blue haze, short visibility.
     /// </summary>
     public sealed class UnderwaterAtmosphere : MonoBehaviour
     {
-        [SerializeField] Color fogColor = new(0.02f, 0.22f, 0.32f);
-        [SerializeField] float fogDensity = 0.035f;
-        [SerializeField] Color ambient = new(0.08f, 0.22f, 0.3f);
+        // Murky tropical water column — not crystal clear.
+        [SerializeField] Color fogColor = new(0.04f, 0.20f, 0.26f);
+        [SerializeField] float fogDensity = 0.13f;
+        [SerializeField] Color ambient = new(0.03f, 0.11f, 0.15f);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -25,7 +26,6 @@ namespace ReefExplorer.Environment
         }
 
         void Awake() => Apply();
-
         void OnEnable() => Apply();
 
         public void Apply()
@@ -36,14 +36,15 @@ namespace ReefExplorer.Environment
             RenderSettings.fogDensity = fogDensity;
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = ambient;
-            RenderSettings.subtractiveShadowColor = fogColor;
+            RenderSettings.subtractiveShadowColor = new Color(0.02f, 0.08f, 0.12f);
             RenderSettings.skybox = null;
 
             foreach (var cam in FindObjectsByType<Camera>(FindObjectsInactive.Include))
             {
                 cam.clearFlags = CameraClearFlags.SolidColor;
                 cam.backgroundColor = fogColor;
-                cam.farClipPlane = Mathf.Max(cam.farClipPlane, 80f);
+                // Divers rarely see much past ~15–20 m in reef water.
+                cam.farClipPlane = 26f;
             }
         }
     }
