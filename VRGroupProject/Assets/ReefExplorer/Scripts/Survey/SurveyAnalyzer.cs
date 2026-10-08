@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 
@@ -20,7 +21,6 @@ namespace ReefExplorer.Survey
                     ? baseline.Disclaimer
                     : "Simulated educational data only.",
                 missionComplete = false,
-                waterSampleCollected = current != null && current.waterSampleCollected,
                 buoyRestored = current != null && current.buoyRestored
             };
 
@@ -73,13 +73,20 @@ namespace ReefExplorer.Survey
 
             BuildRows(result, current, baseline, required);
 
+            // Legacy field assignment for completeness
+#pragma warning disable CS0618
+            result.waterSampleCollected = current != null && current.waterSampleCollected;
+#pragma warning restore CS0618
+
+            // Determine if mission is completely finished
             result.missionComplete =
                 result.buoyRestored &&
-                result.waterSampleCollected &&
                 result.missingRequiredSpecies.Count == 0 &&
-                result.zoneCoveragePercent >= 99.9f;
+                result.zoneCoveragePercent >= 99.9f &&
+                !string.IsNullOrEmpty(current?.recommendedSiteId) &&
+                (current?.markerPlaced ?? false);
 
-            result.plainLanguageSummary = BuildSummary(result);
+            result.plainLanguageSummary = BuildSummary(result, current);
             return result;
         }
 
@@ -167,7 +174,7 @@ namespace ReefExplorer.Survey
             return count;
         }
 
-        static string BuildSummary(SurveyComparisonResult result)
+        static string BuildSummary(SurveyComparisonResult result, DiveLogData current)
         {
             var sb = new StringBuilder();
             sb.Append("You recorded ")
@@ -181,21 +188,39 @@ namespace ReefExplorer.Survey
                 .Append("%. ");
 
             sb.Append(result.buoyRestored
-                ? "Buoy signal restored. "
-                : "Buoy still silent. ");
+                ? "Monitoring station restored. "
+                : "Monitoring station still silent. ");
 
-            sb.Append(result.waterSampleCollected
-                ? "Water sample collected. "
-                : "Water sample missing. ");
+            if (current?.perSiteSamples != null && current.perSiteSamples.Count > 0)
+            {
+                int collected = current.perSiteSamples.Count(s => s.collected);
+                int analysed = current.perSiteSamples.Count(s => s.analysed);
+                sb.Append($"{analysed} of {collected} water samples analysed. ");
+            }
+
+            if (current?.rubbishCollected != null && current.rubbishCollected.Count > 0)
+            {
+                sb.Append($"{current.rubbishCollected.Count} piece(s) of rubbish removed. ");
+            }
+
+            if (current?.hazardsFlagged != null && current.hazardsFlagged.Count > 0)
+            {
+                sb.Append($"{current.hazardsFlagged.Count} hazard(s) flagged for removal. ");
+            }
+
+            if (!string.IsNullOrEmpty(current?.recommendedSiteId))
+            {
+                sb.Append($"\nRecommended site: {current.recommendedSiteId}. Marker Placed: {(current.markerPlaced ? "Yes" : "No")}. ");
+            }
 
             if (result.missingRequiredSpecies.Count > 0)
             {
-                sb.Append("Still missing: ")
+                sb.Append("\nStill missing: ")
                     .Append(string.Join(", ", result.missingRequiredSpecies))
                     .Append(". ");
             }
 
-            sb.Append("Differences from the baseline are for learning only and do not prove reef health.");
+            sb.Append("\nDifferences from the baseline are for learning only and do not prove reef health.");
             return sb.ToString();
         }
     }

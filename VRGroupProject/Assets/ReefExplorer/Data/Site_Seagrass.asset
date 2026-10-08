@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7f1324f52ac09f42a7cb3d4672a703c, type: 3}
+  m_Name: Site_Seagrass
+  m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SiteDefinition
+  siteId: site_seagrass
+  displayName: Seagrass Crossing
+  zoneId: zone_turtle
+  description: A patch of branching coral colonies on a rocky substrate.
+  baselineCoralCondition: "Good \u2014 healthy seagrass bed"
+  baselineSubstrate: Dense seagrass meadow
+  currentCoralCondition: "Poor \u2014 anchor damage to seagrass bed"
+  currentSubstrate: Patchy seagrass
+  waterReadings:
+    waterClarity: Moderate
+    temperatureCelsius: 26.5
+    temperatureSuitability: "Suitable (25-29 \xB0C range)"
+    pH: 8.1
+    currentStrength: Moderate
+    summary: Simulated readings for this educational mission.
+  initialRubbishCount: 2
+  rubbishDescription: Plastic bottles and a food container near the reef edge.
+  hasHazard: 1
+  hazardType: Toxic barrel
+  hazardDescription: 
+  hazardBlocksRestoration: 0
+  suitableForRestoration: 0
+  suitabilityReason: Suitable readings, stable substrate and manageable small debris.
+  unsuitableReason: Anchor damage has destabilized substrate, and toxic barrel is present.
+  suitabilityScore: 80
+  targetAnimal: {fileID: 11400000, guid: 5db23d9827ca8574ab6dd957fc859815, type: 2}
+  animalObservationNote: Clownfish sheltering in surviving anemones.

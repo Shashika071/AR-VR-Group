@@ -24,19 +24,31 @@ namespace ReefExplorer.UI
         void Awake()
         {
             if (titleText != null)
-                titleText.text = "Reef Rescue — The Silent Signal";
+                titleText.text = "Reef Rescue — A Safe Place to Grow";
 
             if (bodyText != null)
             {
                 bodyText.text =
-                    "Welcome, diver. Reef Buoy Seven has gone silent.\n\n" +
-                    "Goals:\n" +
-                    "1) Restore the buoy (insert the power cell)\n" +
-                    "2) Record wildlife (clownfish, turtle, ray)\n" +
-                    "3) Collect and return a water sample\n\n" +
-                    "Press V (or VR / Simulator) to show the XR Origin and Device Simulator.\n" +
-                    "Then Start Dive. Hold Space + mouse to aim, G to grab.\n" +
-                    "Baseline survey data is simulated for learning.";
+                    "Welcome, diver. You are helping a conservation team select\n" +
+                    "a coral-restoration trial site.\n\n" +
+                    "<b>Your Mission:</b>\n" +
+                    "1) Pick up the SCANNER and BOTTLE from the console\n" +
+                    "2) Follow the path to the buoy — insert the power cell\n" +
+                    "3) Visit all 3 sites (Coral Garden, Seagrass Crossing, Sandy Passage)\n" +
+                    "   At each site:\n" +
+                    "   • SCAN the coral survey point (aim scanner + click/trigger)\n" +
+                    "   • SCAN the animal\n" +
+                    "   • COLLECT a water sample (bring bottle to sample zone + press E/trigger)\n" +
+                    "   • PICK UP rubbish (grab it)\n" +
+                    "   • SCAN any hazards (do NOT touch — just scan)\n" +
+                    "4) Return to station — place bottle in SAMPLE ANALYSER\n" +
+                    "5) Review the COMPARISON BOARD and recommend a site\n" +
+                    "6) Take the MARKER to the chosen site\n" +
+                    "7) Submit your report\n\n" +
+                    "<b>Controls:</b>\n" +
+                    "Desktop: WASD move | Right-click look | E grab | Left-click scanner\n" +
+                    "VR/Sim: Hold Space + mouse to aim | G grab | Click to activate\n\n" +
+                    "Press VR/Simulator or Desktop, then Start Mission.";
             }
 
             if (briefingPanel != null)
@@ -76,10 +88,14 @@ namespace ReefExplorer.UI
                 submitButton.interactable = next == MissionState.SubmitLog;
             }
 
-            if (next == MissionState.Results || next == MissionState.Credits)
+            if (next >= MissionState.AnalyseSamples)
             {
                 if (briefingPanel != null)
                     briefingPanel.SetActive(false);
+            }
+
+            if (next == MissionState.Results || next == MissionState.Credits)
+            {
                 if (resultsPanel != null)
                     resultsPanel.SetActive(true);
             }
@@ -107,15 +123,44 @@ namespace ReefExplorer.UI
             if (resultsPanel != null)
                 resultsPanel.SetActive(true);
 
-            resultsText.text =
-                "<b>First mission complete</b>\n" +
-                "Your observations help the research team decide what to investigate next.\n\n" +
-                $"Buoy restored: {(mc.BuoyRestored ? "Yes" : "No")}\n" +
-                $"Species: {comparison.observedRequiredSpeciesCount}/{comparison.requiredSpeciesCount}\n" +
-                $"Water sample returned: {(mc.BottleReturned ? "Yes" : "No")}\n" +
-                $"Zone coverage: {comparison.zoneCoveragePercent:0}%\n\n" +
-                $"<b>Survey comparison (simulated)</b>\n{comparison.plainLanguageSummary}\n\n" +
-                $"Saved:\n{mc.LastSavedPath}\n\n{comparison.disclaimer}";
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("<b>REEF RESCUE — MISSION REPORT</b>");
+            sb.AppendLine("Your evidence helps the conservation team plan coral restoration.\n");
+
+            sb.AppendLine($"Buoy Restored: {(mc.BuoyRestored ? "✓ Yes" : "✗ No")}");
+            sb.AppendLine($"Species Observed: {comparison.observedRequiredSpeciesCount}/{comparison.requiredSpeciesCount}");
+            sb.AppendLine($"Rubbish Collected: {comparison.totalRubbishCollected}");
+            sb.AppendLine($"Hazards Flagged: {comparison.totalHazardsFlagged}");
+            sb.AppendLine();
+
+            if (comparison.siteComparisons != null && comparison.siteComparisons.Count > 0)
+            {
+                sb.AppendLine("<b>SITE COMPARISON:</b>");
+                foreach (var site in comparison.siteComparisons)
+                {
+                    var status = site.observationComplete ? "✓ Complete" : "Incomplete";
+                    sb.AppendLine($"\n<b>{site.displayName}</b> [{status}]");
+                    sb.AppendLine($"  Coral: {site.currentCoralCondition}");
+                    sb.AppendLine($"  Water: {site.waterClarity} | {site.temperature:F1}°C ({site.temperatureSuitability})");
+                    sb.AppendLine($"  Rubbish: {site.rubbishRemoved}/{site.initialRubbish} removed");
+                    if (site.hasHazard)
+                        sb.AppendLine($"  Hazard: {site.hazardType} {(site.hazardFlagged ? "(Flagged ✓)" : "(Not flagged)")}");
+                }
+                sb.AppendLine();
+            }
+
+            if (!string.IsNullOrEmpty(comparison.recommendedSiteId))
+            {
+                sb.AppendLine($"<b>RECOMMENDED SITE:</b> {comparison.recommendedSiteId}");
+                sb.AppendLine($"Reason: {comparison.recommendationExplanation}");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine($"{comparison.disclaimer}");
+            if (!string.IsNullOrEmpty(mc.LastSavedPath))
+                sb.AppendLine($"\nSaved: {mc.LastSavedPath}");
+
+            resultsText.text = sb.ToString();
         }
 
         static void Wire(Button button, UnityEngine.Events.UnityAction action)

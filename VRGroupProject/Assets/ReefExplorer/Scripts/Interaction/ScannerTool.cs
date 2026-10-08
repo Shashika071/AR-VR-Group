@@ -18,7 +18,7 @@ namespace ReefExplorer.Interaction
 
         XRGrabInteractable grab;
         float scanProgress;
-        SurveyAnimal currentTarget;
+        IScannable currentTarget;
         bool activateHeld;
         bool desktopActivate;
         bool warnedInvalid;
@@ -77,8 +77,8 @@ namespace ReefExplorer.Interaction
             if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out var hit, range, hitMask,
                     QueryTriggerInteraction.Ignore))
             {
-                var animal = hit.collider.GetComponentInParent<SurveyAnimal>();
-                var valid = animal != null && !animal.Scanned;
+                var scannable = hit.collider.GetComponentInParent<IScannable>();
+                var valid = scannable != null && !scannable.IsScanned;
                 SetBeam(true, valid, hit.point);
 
                 if (!valid)
@@ -86,10 +86,10 @@ namespace ReefExplorer.Interaction
                     if (!warnedInvalid)
                     {
                         warnedInvalid = true;
-                        if (animal != null && animal.Scanned)
+                        if (scannable != null && scannable.IsScanned)
                             MissionEvents.RaiseFeedback("Already scanned.");
                         else
-                            MissionEvents.RaiseFeedback("Aim at a survey animal.");
+                            MissionEvents.RaiseFeedback("Aim at a survey point, animal, or hazard.");
                         GameAudio.PlayInvalid(transform.position);
                     }
 
@@ -99,9 +99,9 @@ namespace ReefExplorer.Interaction
 
                 warnedInvalid = false;
 
-                if (currentTarget != animal)
+                if (currentTarget != scannable)
                 {
-                    currentTarget = animal;
+                    currentTarget = scannable;
                     scanProgress = 0f;
                     GameAudio.PlayScannerStart(transform.position);
                 }
@@ -111,7 +111,7 @@ namespace ReefExplorer.Interaction
 
                 if (scanProgress >= scanDuration)
                 {
-                    if (currentTarget.TryMarkScanned())
+                    if (currentTarget.TryScan())
                         GameAudio.PlayScannerSuccess(transform.position);
                     StopScan();
                 }
