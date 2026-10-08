@@ -75,7 +75,7 @@ namespace ReefExplorer.Environment
 
             // Use flatfish as ray stand-in until a stingray FBX is added.
             ReplaceAnimalVisual("Animal_Ray", $"{FishFolder}/Flatfish.fbx", 0.9f,
-                new Color(0.45f, 0.55f, 0.7f), localEuler: new Vector3(-90f, 0f, 0f));
+                new Color(0.45f, 0.55f, 0.7f), localEuler: new Vector3(-90f, 180f, 0f));
 
             // New_fish meshes are authored nose-down — level any already-placed ambient fish.
             LevelNewFishOrientation();
@@ -104,8 +104,8 @@ namespace ReefExplorer.Environment
                     var visual = Instantiate(prefab, root.transform);
                     visual.name = "Visual";
                     visual.transform.localPosition = Vector3.zero;
-                    // Nose is -Y on New_fish — rotate visual so belly is down, nose leads.
-                    visual.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+                    // -90 keeps the belly down. Extra 180 yaw turns the head forward.
+                    visual.transform.localRotation = Quaternion.Euler(-90f, 180f, 0f);
                     DisableCollidersNow(visual);
                     FitUniformScale(visual, Random.Range(0.32f, 0.48f));
                     ApplyUrpTint(visual, FishColors[i % FishColors.Length]);
@@ -139,14 +139,15 @@ namespace ReefExplorer.Environment
                 // Mesh is on the same object (editor spawn) — use swim offset.
                 if (wander.transform.Find("Visual") == null)
                 {
-                    offsetField.SetValue(wander, new Vector3(-90f, 0f, 0f));
+                    offsetField.SetValue(wander, new Vector3(-90f, 180f, 0f));
                     continue;
                 }
 
-                // SchoolFish root + Visual child — rotate the mesh only.
+                // SchoolFish root + Visual child — rotate the mesh only, once.
                 var visual = wander.transform.Find("Visual");
                 if (visual != null)
-                    visual.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+                    visual.localRotation = Quaternion.Euler(-90f, 180f, 0f);
+                offsetField.SetValue(wander, Vector3.zero);
             }
         }
 

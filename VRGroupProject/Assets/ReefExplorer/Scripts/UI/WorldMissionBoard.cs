@@ -34,7 +34,8 @@ namespace ReefExplorer.UI
                     "1) Restore the buoy (insert the power cell)\n" +
                     "2) Record wildlife (clownfish, turtle, ray)\n" +
                     "3) Collect and return a water sample\n\n" +
-                    "Choose Desktop or VR, then Start Dive.\n" +
+                    "Press V (or VR / Simulator) to show the XR Origin and Device Simulator.\n" +
+                    "Then Start Dive. Hold Space + mouse to aim, G to grab.\n" +
                     "Baseline survey data is simulated for learning.";
             }
 

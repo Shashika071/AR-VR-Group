@@ -9,8 +9,8 @@ namespace ReefExplorer.Environment
         [SerializeField] float speed = 0.6f;
         [SerializeField] float turnSpeed = 1.2f;
         /// <summary>
-        /// New_fish / DeepExploration meshes often have nose on -Y instead of +Z.
-        /// Apply (-90,0,0) so LookRotation aims the body, not the belly.
+        /// Nose is along -Y and the belly needs to stay down.
+        /// (-90, 180, 0) levels the fish, turns the head forward, and does not flip the belly.
         /// </summary>
         [SerializeField] Vector3 meshEulerOffset;
 

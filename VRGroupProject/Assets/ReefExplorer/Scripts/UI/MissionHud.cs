@@ -75,8 +75,10 @@ namespace ReefExplorer.UI
 
         void OnState(MissionState _, MissionState next)
         {
-            // Keep top bar hidden on briefing / mode select so it does not cover the board.
-            var show = next is MissionState.TutorialMove or MissionState.TutorialGrab or MissionState.TutorialActivate
+            // XR / simulator keeps a clear view: no objective bar over the controllers.
+            var xr = MissionController.Instance != null &&
+                     MissionController.Instance.PlayMode == PlayModeType.XR;
+            var show = !xr && next is MissionState.TutorialMove or MissionState.TutorialGrab or MissionState.TutorialActivate
                 or MissionState.GatherTools or MissionState.RepairBuoy or MissionState.SurveyAnimals
                 or MissionState.CollectSample or MissionState.ReturnToStation or MissionState.ReturnBottle
                 or MissionState.SubmitLog or MissionState.Results or MissionState.Credits or MissionState.Complete
@@ -125,7 +127,7 @@ namespace ReefExplorer.UI
             controlsText.text = MissionController.Instance.PlayMode switch
             {
                 PlayModeType.XR =>
-                    "VR: Teleport + snap turn | Space/Shift aim | G grab | Click activate",
+                    "VR: mouse looks up/down | Hold Space, mouse up raises controller | G grab",
                 PlayModeType.Desktop =>
                     "Desktop: WASD | Space jump | Right Mouse look | E grab | Click scanner | Q drop | Esc pause",
                 _ => string.Empty

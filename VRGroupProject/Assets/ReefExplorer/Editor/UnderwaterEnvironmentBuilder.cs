@@ -894,7 +894,7 @@ namespace ReefExplorer.EditorTools
                 so.FindProperty("center").vector3Value = p;
                 so.FindProperty("extents").vector3Value = new Vector3(2.2f, 0.35f, 2.2f);
                 so.FindProperty("speed").floatValue = Random.Range(0.22f, 0.38f);
-                so.FindProperty("meshEulerOffset").vector3Value = new Vector3(-90f, 0f, 0f);
+                so.FindProperty("meshEulerOffset").vector3Value = new Vector3(-90f, 180f, 0f);
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
         }
