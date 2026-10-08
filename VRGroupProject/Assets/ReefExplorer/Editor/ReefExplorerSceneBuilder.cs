@@ -374,6 +374,10 @@ namespace ReefExplorer.EditorTools
             // Ambient fish from Assets/New_fish (not scan targets). Fake stylized fish removed.
             var newFishPaths = new[]
             {
+                "Assets/Fish/[FBX] Undualte_Triggerfish/Undualte_Triggerfish.FBX",
+                "Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas taeniolatus.FBX",
+                "Assets/Fish/Butterfly/Butterfly.FBX",
+                "Assets/Fish/Anthias1/Anthias1.FBX",
                 "Assets/New_fish/Angelfish.obj",
                 "Assets/New_fish/Betta_Fish.obj",
                 "Assets/New_fish/Undualte_Triggerfish.FBX",
@@ -391,7 +395,8 @@ namespace ReefExplorer.EditorTools
                 var fish = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
                 if (fish == null)
                     fish = Object.Instantiate(prefab);
-                fish.name = $"ScenicFish_{i}";
+                var packFish = IsSideNoseFish(path);
+                fish.name = packFish ? $"PackFish_{i}" : $"ScenicFish_{i}";
                 fish.transform.SetParent(reefRoot.transform);
                 fish.transform.position = pos;
                 foreach (var col in fish.GetComponentsInChildren<Collider>(true))
@@ -410,13 +415,17 @@ namespace ReefExplorer.EditorTools
                         fish.transform.localScale = Vector3.one * Mathf.Clamp(0.4f / cur, 0.01f, 8f);
                 }
 
-                fish.transform.rotation = Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
+                fish.transform.rotation = packFish
+                    ? Quaternion.Euler(0f, Random.Range(0f, 360f), 0f)
+                    : Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
                 var wander = fish.AddComponent<AnimalWander>();
                 var wso = new SerializedObject(wander);
                 wso.FindProperty("center").vector3Value = pos;
                 wso.FindProperty("extents").vector3Value = new Vector3(2.5f, 0.5f, 2.5f);
                 wso.FindProperty("speed").floatValue = 0.4f;
-                wso.FindProperty("meshEulerOffset").vector3Value = new Vector3(-90f, 0f, 0f);
+                wso.FindProperty("meshEulerOffset").vector3Value = packFish
+                    ? PackFishOffset(path)
+                    : new Vector3(-90f, 0f, 0f);
                 wso.ApplyModifiedPropertiesWithoutUndo();
             }
 
@@ -424,6 +433,27 @@ namespace ReefExplorer.EditorTools
             CreateBoundaryWall("Bound_South", new Vector3(0f, 3f, -4f), new Vector3(30f, 8f, 1f));
             CreateBoundaryWall("Bound_East", new Vector3(13f, 3f, 10f), new Vector3(1f, 8f, 30f));
             CreateBoundaryWall("Bound_West", new Vector3(-13f, 3f, 10f), new Vector3(1f, 8f, 30f));
+        }
+
+        static bool IsSideNoseFish(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return false;
+            return path.IndexOf("[FBX]", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("/Butterfly/", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("/Anthias1/", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        static Vector3 PackFishOffset(string path)
+        {
+            if (path.IndexOf("Butterfly", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(-90f, 90f, 0f);
+            if (path.IndexOf("Anthias", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(0f, 180f, 0f);
+            if (path.IndexOf("Protomelas", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("Taeniolatus", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(90f, 0f, 0f);
+            return new Vector3(0f, -90f, 0f);
         }
 
         static void PopulateReefPatch(Transform parent, Vector3 center, MaterialBag mats, bool coralHeavy, bool plants)

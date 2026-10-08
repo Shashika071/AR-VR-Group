@@ -9,8 +9,8 @@ namespace ReefExplorer.Environment
         [SerializeField] float speed = 0.6f;
         [SerializeField] float turnSpeed = 1.2f;
         /// <summary>
-        /// Nose is along -Y and the belly needs to stay down.
-        /// (-90, 180, 0) levels the fish, turns the head forward, and does not flip the belly.
+        /// Extra rotation so the mesh nose matches the swim direction.
+        /// New_fish are nose-down: (-90, 0, 0).
         /// </summary>
         [SerializeField] Vector3 meshEulerOffset;
 
