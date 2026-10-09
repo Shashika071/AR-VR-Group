@@ -166,11 +166,10 @@ namespace ReefExplorer.Core
                 return false;
             }
 
-            if (state != MissionState.RepairBuoy &&
-                state != MissionState.GatherTools &&
-                state != MissionState.SurveyAnimals)
+            if (state is MissionState.Boot or MissionState.ModeSelect or MissionState.Paused
+                or MissionState.Complete or MissionState.Credits or MissionState.Results)
             {
-                MissionEvents.RaiseFeedback("Finish gathering your tools, then restore the monitoring station.");
+                MissionEvents.RaiseFeedback("Start the dive, then place the buoy battery in the cyan box.");
                 return false;
             }
 
@@ -179,7 +178,7 @@ namespace ReefExplorer.Core
             CompleteObjective("buoy_restored");
             MissionEvents.RaiseBuoyRestored();
             SetState(MissionState.SurveyAnimals);
-            SetObjective("Communication restored. Visit Coral Garden, Seagrass Crossing and Sandy Passage.\n" +
+            SetObjective("Communication restored. Visit Coral Garden, Seagrass Crossing and Starfish Ledge.\n" +
                           "At each site: scan the coral survey point, scan the animal, collect a water sample, and pick up rubbish.");
             MissionEvents.RaiseFeedback(
                 "Communication restored. We have the previous survey. Now we need to see what has changed. — Maya");
@@ -340,7 +339,10 @@ namespace ReefExplorer.Core
 
             MissionEvents.RaiseWaterSampleCollected(siteId);
             MissionEvents.RaiseSampleCollected();
-            MissionEvents.RaiseFeedback($"Water sample collected from {siteName}. Label: {siteId}.");
+            if (HasAllWaterSamples())
+                MissionEvents.RaiseFeedback("All water samples complete.");
+            else
+                MissionEvents.RaiseFeedback($"Water sample collected from {siteName}.");
 
             CheckSurveyProgress();
             return true;
@@ -725,6 +727,25 @@ namespace ReefExplorer.Core
         {
             if (!diveLog.completedObjectives.Contains(id))
                 diveLog.completedObjectives.Add(id);
+        }
+
+        bool HasAllWaterSamples()
+        {
+            if (sites == null || sites.Length == 0)
+                return false;
+
+            foreach (var site in sites)
+            {
+                if (site == null)
+                    return false;
+                var got = diveLog.perSiteSamples.Exists(s =>
+                    s != null && s.collected &&
+                    string.Equals(s.siteId, site.SiteId, StringComparison.OrdinalIgnoreCase));
+                if (!got)
+                    return false;
+            }
+
+            return true;
         }
 
         bool HasAllRequiredSpecies()

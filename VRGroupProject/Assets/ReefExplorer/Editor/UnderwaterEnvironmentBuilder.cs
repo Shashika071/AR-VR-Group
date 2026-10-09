@@ -153,7 +153,7 @@ namespace ReefExplorer.EditorTools
             EditorUtility.DisplayDialog(
                 "Underwater Environment",
                 "Built textured compact reef:\n" +
-                "Station → Buoy → Coral Garden / Seagrass / Sandy Passage.\n\n" +
+                "Station → Buoy → Coral Garden / Seagrass / Starfish Ledge.\n\n" +
                 "1) Press Play\n" +
                 "2) Desktop → Start Dive\n" +
                 "3) Capture Game view from the station toward Coral Garden\n\n" +
