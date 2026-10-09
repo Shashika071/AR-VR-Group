@@ -29,38 +29,42 @@ namespace ReefExplorer.Interaction
             if (scanned || MissionController.Instance == null)
                 return false;
 
-            var ok = MissionController.Instance.TryFlagHazard(hazardId, siteId, hazardType);
+            MissionEvents.RaiseFeedback("Use the disposal tool on the green cloud.");
+            return false;
+        }
+
+        public bool TryDispose()
+        {
+            if (scanned || MissionController.Instance == null)
+                return false;
+
+            var ok = MissionController.Instance.TryDisposeToxin(hazardId, siteId, hazardType);
             if (!ok)
                 return false;
 
             scanned = true;
-            ApplyScannedVisual();
+            SetVisible(false);
             return true;
         }
 
         public void ResetScanned()
         {
             scanned = false;
-            ApplyScannedVisual();
+            SetVisible(true);
         }
 
-        void ApplyScannedVisual()
+        public void SetVisible(bool visible)
         {
-            if (tintRenderers == null)
-                return;
-
-            foreach (var renderer in tintRenderers)
+            foreach (var renderer in GetComponentsInChildren<Renderer>(true))
             {
-                if (renderer == null)
-                    continue;
+                if (renderer != null)
+                    renderer.enabled = visible;
+            }
 
-                foreach (var mat in renderer.materials)
-                {
-                    if (mat.HasProperty("_BaseColor"))
-                    {
-                        mat.SetColor("_BaseColor", Color.Lerp(mat.GetColor("_BaseColor"), Color.red, 0.5f));
-                    }
-                }
+            foreach (var collider in GetComponentsInChildren<Collider>(true))
+            {
+                if (collider != null)
+                    collider.enabled = visible;
             }
         }
     }

@@ -90,7 +90,10 @@ namespace ReefExplorer.UI
                 
                 // Observations
                 sb.Append("Coral: ");
-                sb.AppendLine(progress.coralScanned ? site.CurrentCoralCondition : "<i>[Pending scan]</i>");
+                var scannedCondition = mc.LatestCoralCondition(site.SiteId);
+                sb.AppendLine(progress.coralScanned
+                    ? (string.IsNullOrEmpty(scannedCondition) ? site.CurrentCoralCondition : scannedCondition)
+                    : "<i>Not scanned yet</i>");
                 
                 sb.Append("Baseline: ");
                 sb.AppendLine(mc.BuoyRestored ? site.BaselineCoralCondition : "<i>[Offline]</i>");

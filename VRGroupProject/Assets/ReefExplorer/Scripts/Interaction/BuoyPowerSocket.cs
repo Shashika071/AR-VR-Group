@@ -27,6 +27,13 @@ namespace ReefExplorer.Interaction
                 snapPoint = transform;
             if (buoy == null)
                 buoy = GetComponentInParent<MonitoringBuoy>();
+
+            var renderer = GetComponent<Renderer>();
+            if (renderer != null)
+                renderer.enabled = false;
+            var box = GetComponent<Collider>();
+            if (box != null)
+                box.enabled = false;
         }
 
         void OnEnable()

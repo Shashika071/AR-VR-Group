@@ -12,6 +12,8 @@ namespace ReefExplorer.Interaction
         const float FillSeconds = 2.4f;
 
         [SerializeField] string siteId = "site_coral";
+
+        public string SiteId => siteId;
         [SerializeField] Key desktopFillKey = Key.E;
 
         SampleBottle bottleInZone;

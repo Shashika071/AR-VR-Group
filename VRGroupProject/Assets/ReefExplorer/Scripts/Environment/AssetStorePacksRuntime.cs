@@ -7,10 +7,7 @@ using UnityEditor;
 namespace ReefExplorer.Environment
 {
     /// <summary>
-    /// Hooks Asset Store packs after import:
-    /// - Space Shuttle (Amint3D) as dive vehicle
-    /// - Ambient Video Game Music - Underwater Worlds (Phat Phrog) as ambience
-    /// Retries a few times so late Package Manager imports still work.
+    /// Hooks imported audio packs. The dive craft is the Explorer submarine.
     /// </summary>
     public sealed class AssetStorePacksRuntime : MonoBehaviour
     {
@@ -26,57 +23,12 @@ namespace ReefExplorer.Environment
             host.AddComponent<AssetStorePacksRuntime>();
         }
 
-        void Start() => StartCoroutine(ApplyShuttleWhenReady());
-
-        System.Collections.IEnumerator ApplyShuttleWhenReady()
+        void Start()
         {
-            for (var i = 0; i < 12; i++)
-            {
-                if (TryAttachShuttle())
-                {
-                    Debug.Log("[ReefExplorer] Space Shuttle ready as dive vehicle.");
-                    yield break;
-                }
-
-                yield return new WaitForSeconds(0.75f);
-            }
-            // Silent if not imported — no console spam.
-        }
-
-        static bool TryAttachShuttle()
-        {
-            var desktopEarly = GameObject.Find("DesktopPlayer");
-            var stuckEarly = desktopEarly != null ? desktopEarly.transform.Find("DiveVehicle") : null;
-            if (stuckEarly != null)
-                Object.Destroy(stuckEarly.gameObject);
-
-            if (GameObject.Find("StationDiveCraft") != null)
-                return true;
-
-            var prefab = FindAsset<GameObject>(
-                new[] { "Space Shuttle", "SpaceShuttle", "Shuttle" },
-                new[] { ".prefab", ".fbx", ".FBX" },
-                mustContain: "Shuttle");
-            if (prefab == null)
-                return false;
-
             var desktop = GameObject.Find("DesktopPlayer");
             var stuck = desktop != null ? desktop.transform.Find("DiveVehicle") : null;
             if (stuck != null)
-                Object.Destroy(stuck.gameObject);
-
-            var parkedGo = GameObject.Find("StationDiveCraft");
-            if (parkedGo == null)
-            {
-                parkedGo = Object.Instantiate(prefab);
-                parkedGo.name = "StationDiveCraft";
-                parkedGo.transform.position = new Vector3(2.8f, 0.95f, -0.3f);
-                parkedGo.transform.rotation = Quaternion.Euler(0f, -40f, 0f);
-                StripColliders(parkedGo);
-            }
-
-            FitScale(parkedGo, 3.1f);
-            return true;
+                Destroy(stuck.gameObject);
         }
 
         static bool TryApplyUnderwaterMusic()
