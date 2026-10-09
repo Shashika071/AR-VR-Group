@@ -73,12 +73,9 @@ namespace ReefExplorer.Environment
             ReplaceAnimalVisual("Animal_Sea Turtle", $"{AnimalsFolder}/LoggerheadTurtle.FBX", 1.1f,
                 new Color(0.35f, 0.7f, 0.4f), localEuler: new Vector3(-90f, 0f, 0f));
 
-            // Use flatfish as ray stand-in until a stingray FBX is added.
-            ReplaceAnimalVisual("Animal_Ray", $"{FishFolder}/Flatfish.fbx", 0.9f,
-                new Color(0.45f, 0.55f, 0.7f), localEuler: new Vector3(-90f, 0f, 0f));
-
             // New_fish meshes are authored nose-down — level any already-placed ambient fish.
             LevelNewFishOrientation();
+            PlacePackFish();
 
             // Authored underwater build already places New_fish — do not add a second school.
             var hasAuthoredReef = GameObject.Find("UnderwaterEnvironment_v1") != null;
@@ -104,7 +101,7 @@ namespace ReefExplorer.Environment
                     var visual = Instantiate(prefab, root.transform);
                     visual.name = "Visual";
                     visual.transform.localPosition = Vector3.zero;
-                    // Nose is -Y on New_fish — rotate visual so belly is down, nose leads.
+                    // -90 keeps the belly down. Extra 180 yaw turns the head forward.
                     visual.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
                     DisableCollidersNow(visual);
                     FitUniformScale(visual, Random.Range(0.32f, 0.48f));
@@ -122,6 +119,43 @@ namespace ReefExplorer.Environment
             Debug.Log($"[ReefExplorer] Mission/ambient fish ready ({fishSpawn}).");
         }
 
+        static bool NameHas(UnityEngine.Object obj, string a, string b)
+        {
+            if (obj == null)
+                return false;
+            return obj.name.IndexOf(a, System.StringComparison.OrdinalIgnoreCase) >= 0
+                || obj.name.IndexOf(b, System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        static bool UsesProtomelas(AnimalWander wander)
+        {
+            foreach (var filter in wander.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (NameHas(filter.sharedMesh, "Protomelas", "Taeniolatus"))
+                    return true;
+            }
+
+            foreach (var renderer in wander.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = renderer.sharedMaterials;
+                for (var i = 0; i < mats.Length; i++)
+                {
+                    var mat = mats[i];
+                    if (mat == null)
+                        continue;
+                    if (NameHas(mat, "Protomelas", "Taeniolatus"))
+                        return true;
+                    var tex = mat.mainTexture;
+                    if (tex == null && mat.HasProperty("_BaseMap"))
+                        tex = mat.GetTexture("_BaseMap");
+                    if (NameHas(tex, "Protomelas", "Taeniolatus"))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
         static void LevelNewFishOrientation()
         {
             var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
@@ -131,6 +165,16 @@ namespace ReefExplorer.Environment
 
             foreach (var wander in FindObjectsByType<AnimalWander>(FindObjectsSortMode.None))
             {
+                // This mesh is authored nose-up. Pitch +90 lays the head forward and the back up.
+                if (UsesProtomelas(wander))
+                {
+                    offsetField.SetValue(wander, new Vector3(90f, 0f, 0f));
+                    var protomelasMesh = wander.transform.Find("Visual");
+                    if (protomelasMesh != null)
+                        protomelasMesh.localRotation = Quaternion.identity;
+                    continue;
+                }
+
                 var n = wander.name;
                 if (!n.StartsWith("AmbientFish_") && !n.StartsWith("ScenicFish_") &&
                     !n.StartsWith("CentreFish_") && !n.StartsWith("SchoolFish_"))
@@ -143,11 +187,107 @@ namespace ReefExplorer.Environment
                     continue;
                 }
 
-                // SchoolFish root + Visual child — rotate the mesh only.
+                // SchoolFish root + Visual child — rotate the mesh only, once.
                 var visual = wander.transform.Find("Visual");
                 if (visual != null)
                     visual.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+                offsetField.SetValue(wander, Vector3.zero);
             }
+        }
+
+        /// <summary>
+        /// Nose is along -X. Anthias, triggerfish, and Protomelas are already upright.
+        /// Butterfly is Z-up, so it also pitches -90.
+        /// </summary>
+        void PlacePackFish()
+        {
+            var root = GameObject.Find("PackFishSchool");
+            if (root == null)
+                root = new GameObject("PackFishSchool");
+
+            // Triggerfish nose is on X, so yaw it forward. Protomelas nose is on +Y, so pitch it forward.
+            // Anthias nose is -Z. A 90 degree pitch was standing it on its tail, so only yaw 180.
+            var forward = new Vector3(0f, -90f, 0f);
+            var protomelas = new Vector3(90f, 0f, 0f);
+            var butterfly = new Vector3(-90f, 90f, 0f);
+            var anthias = new Vector3(0f, 180f, 0f);
+            var entries = new[]
+            {
+                ("Assets/Fish/[FBX] Undualte_Triggerfish/Undualte_Triggerfish.FBX", "PackFish_Trigger_0", forward, new Vector3(1.2f, 1.15f, 4.6f), 0.42f),
+                ("Assets/Fish/[FBX] Undualte_Triggerfish/Undualte_Triggerfish.FBX", "PackFish_Trigger_1", forward, new Vector3(-4.8f, 1.2f, 11.2f), 0.42f),
+                ("Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas taeniolatus.FBX", "PackFish_Protomelas_0", protomelas, new Vector3(-1.5f, 1.25f, 6.4f), 0.42f),
+                ("Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas taeniolatus.FBX", "PackFish_Protomelas_1", protomelas, new Vector3(4.4f, 1.15f, 12.1f), 0.42f),
+                ("Assets/Fish/Butterfly/Butterfly.FBX", "PackFish_Butterfly_0", butterfly, new Vector3(2.1f, 1.2f, 5.4f), 0.34f),
+                ("Assets/Fish/Butterfly/Butterfly.FBX", "PackFish_Butterfly_1", butterfly, new Vector3(-5.2f, 1.15f, 10.4f), 0.34f),
+                ("Assets/Fish/Anthias1/Anthias1.FBX", "PackFish_Anthias_0", anthias, new Vector3(-2.3f, 1.1f, 7.1f), 0.38f),
+                ("Assets/Fish/Anthias1/Anthias1.FBX", "PackFish_Anthias_1", anthias, new Vector3(3.2f, 1.2f, 11.6f), 0.38f),
+            };
+
+            foreach (var entry in entries)
+            {
+                if (GameObject.Find(entry.Item2) != null)
+                    continue;
+                SpawnPackFish(root.transform, entry.Item1, entry.Item2, entry.Item4, entry.Item5, entry.Item3);
+            }
+
+            PlaceJellyfish(root.transform);
+        }
+
+        void PlaceJellyfish(Transform parent)
+        {
+            const string path = "Assets/Other_Animals/jelly/Jellyfish.fbx";
+            var spots = new[]
+            {
+                new Vector3(0.4f, 1.7f, 5.8f),
+                new Vector3(-3.1f, 1.9f, 9.4f),
+            };
+            for (var i = 0; i < spots.Length; i++)
+            {
+                var name = $"PackJelly_{i}";
+                if (GameObject.Find(name) != null)
+                    continue;
+                var prefab = LoadModel(path);
+                if (prefab == null)
+                    return;
+
+                var jelly = Instantiate(prefab, parent);
+                jelly.name = name;
+                jelly.transform.position = spots[i];
+                jelly.transform.rotation = Quaternion.identity;
+                DisableCollidersNow(jelly);
+                FitToTarget(jelly, 0.55f);
+                StartCoroutine(RefitNextFrame(jelly, 0.55f));
+                ApplyUrpTint(jelly, new Color(0.7f, 0.85f, 1f));
+                jelly.AddComponent<JellyFloat>();
+            }
+        }
+
+        void SpawnPackFish(Transform parent, string path, string fishName, Vector3 pos, float size, Vector3 meshEuler)
+        {
+            var prefab = LoadModel(path);
+            if (prefab == null)
+                return;
+
+            var fish = new GameObject(fishName);
+            fish.transform.SetParent(parent);
+            fish.transform.position = pos;
+            var visual = Instantiate(prefab, fish.transform);
+            visual.name = "Visual";
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.identity;
+            DisableCollidersNow(visual);
+            FitToTarget(visual, size);
+            StartCoroutine(RefitNextFrame(visual, size));
+            ApplyUrpTint(visual, Color.white);
+            foreach (var r in visual.GetComponentsInChildren<Renderer>(true))
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            var wander = fish.AddComponent<AnimalWander>();
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            typeof(AnimalWander).GetField("center", flags)?.SetValue(wander, pos);
+            typeof(AnimalWander).GetField("extents", flags)?.SetValue(wander, new Vector3(2.4f, 0.35f, 2.4f));
+            typeof(AnimalWander).GetField("speed", flags)?.SetValue(wander, UnityEngine.Random.Range(0.28f, 0.42f));
+            typeof(AnimalWander).GetField("meshEulerOffset", flags)?.SetValue(wander, meshEuler);
         }
 
         static bool HasVisual(string animalName)
@@ -260,16 +400,28 @@ namespace ReefExplorer.Environment
 
         static void FitUniformScale(GameObject go, float targetSize)
         {
+            FitToTarget(go, targetSize);
+        }
+
+        /// <summary>
+        /// Scales to an exact size. The old 0.01 minimum left the butterfly several metres wide.
+        /// </summary>
+        static void FitToTarget(GameObject go, float targetSize)
+        {
+            if (go == null)
+                return;
             go.transform.localScale = Vector3.one;
             var bounds = GetWorldBounds(go);
             var current = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-            if (current < 0.01f || current > 500f)
-            {
-                go.transform.localScale = Vector3.one * Mathf.Clamp(targetSize, 0.15f, 1.5f);
+            if (current < 0.001f)
                 return;
-            }
+            go.transform.localScale = Vector3.one * (targetSize / current);
+        }
 
-            go.transform.localScale = Vector3.one * Mathf.Clamp(targetSize / current, 0.01f, 3f);
+        System.Collections.IEnumerator RefitNextFrame(GameObject go, float targetSize)
+        {
+            yield return null;
+            FitToTarget(go, targetSize);
         }
 
         static void ApplyUrpTint(GameObject go, Color tint)
@@ -328,6 +480,26 @@ namespace ReefExplorer.Environment
             for (var i = 1; i < rends.Length; i++)
                 b.Encapsulate(rends[i].bounds);
             return b;
+        }
+    }
+
+    /// <summary>Keeps a jellyfish bell-up and lets it drift up and down.</summary>
+    public sealed class JellyFloat : MonoBehaviour
+    {
+        Vector3 origin;
+        float phase;
+
+        void Start()
+        {
+            origin = transform.position;
+            phase = Random.Range(0f, 6.28f);
+        }
+
+        void Update()
+        {
+            var p = origin;
+            p.y += Mathf.Sin(Time.time * 0.55f + phase) * 0.22f;
+            transform.position = p;
         }
     }
 }

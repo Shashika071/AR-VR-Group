@@ -8,6 +8,7 @@ namespace ReefExplorer.Interaction
     [RequireComponent(typeof(Collider))]
     public sealed class SampleZone : MonoBehaviour
     {
+        [SerializeField] string siteId = "site_coral";
         [SerializeField] string prompt = "Hold bottle here and press E / Trigger to fill.";
         [SerializeField] Key desktopFillKey = Key.E;
 
@@ -52,7 +53,7 @@ namespace ReefExplorer.Interaction
         public bool TryFill()
         {
             var ok = MissionController.Instance != null &&
-                     MissionController.Instance.TryFillBottle(bottleInZone != null, true);
+                     MissionController.Instance.TryCollectSample(siteId, bottleInZone != null, true);
 
             if (ok)
             {

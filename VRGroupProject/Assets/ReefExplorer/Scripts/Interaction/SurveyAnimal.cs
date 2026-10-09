@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ReefExplorer.Interaction
 {
     [RequireComponent(typeof(Collider))]
-    public sealed class SurveyAnimal : MonoBehaviour
+    public sealed class SurveyAnimal : MonoBehaviour, IScannable
     {
         [SerializeField] string animalInstanceId;
         [SerializeField] SpeciesDefinition species;
@@ -18,10 +18,11 @@ namespace ReefExplorer.Interaction
 
         public SpeciesDefinition Species => species;
         public string ZoneId => zoneId;
-        public bool Scanned => scanned;
+        public bool IsScanned => scanned;
+        public bool Scanned => scanned; // legacy
 
-        void OnEnable() => MissionEvents.MissionRestarted += ResetForRestart;
-        void OnDisable() => MissionEvents.MissionRestarted -= ResetForRestart;
+        void OnEnable() => MissionEvents.MissionRestarted += ResetScanned;
+        void OnDisable() => MissionEvents.MissionRestarted -= ResetScanned;
 
         void Reset()
         {
@@ -31,7 +32,9 @@ namespace ReefExplorer.Interaction
                 col.isTrigger = false;
         }
 
-        public bool TryMarkScanned()
+        public bool TryMarkScanned() => TryScan();
+
+        public bool TryScan()
         {
             if (scanned || species == null || MissionController.Instance == null)
                 return false;
@@ -45,7 +48,9 @@ namespace ReefExplorer.Interaction
             return true;
         }
 
-        public void ResetForRestart()
+        public void ResetForRestart() => ResetScanned();
+
+        public void ResetScanned()
         {
             scanned = false;
             ApplyScannedVisual();

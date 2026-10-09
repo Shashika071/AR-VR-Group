@@ -31,9 +31,12 @@ namespace ReefExplorer.Environment
 
         void Attach(GameObject prefab)
         {
+            // Keep the shuttle parked at the station. Do not parent it to the player,
+            // or the hull sits on their feet and the feet show inside the craft.
             var desktop = GameObject.Find("DesktopPlayer");
-            if (desktop != null)
-                AttachToPlayer(desktop.transform, prefab, new Vector3(0f, -0.85f, 0.9f), 2.5f);
+            var stuck = desktop != null ? desktop.transform.Find("DiveVehicle") : null;
+            if (stuck != null)
+                Destroy(stuck.gameObject);
 
             var parkedGo = GameObject.Find("StationDiveCraft");
             if (parkedGo == null)
@@ -46,46 +49,29 @@ namespace ReefExplorer.Environment
             }
 
             FitUniformScale(parkedGo, 3.1f);
+            HideBodyParts(parkedGo);
         }
 
-        static void AttachToPlayer(Transform parent, GameObject prefab, Vector3 localPos, float size)
+        static void HideBodyParts(GameObject vehicle)
         {
-            var existing = parent.Find("DiveVehicle");
-            GameObject vehicle;
-            if (existing != null)
-            {
-                vehicle = existing.gameObject;
-            }
-            else
-            {
-                vehicle = Instantiate(prefab, parent);
-                vehicle.name = "DiveVehicle";
-                DisableColliders(vehicle);
-            }
-
-            vehicle.transform.localPosition = localPos;
-            vehicle.transform.localRotation = Quaternion.identity;
-            FitUniformScale(vehicle, size);
-            // Keep craft under the camera so it never blacks out the view.
-            HideMeshesInFrontOfCamera(vehicle, parent);
-        }
-
-        static void HideMeshesInFrontOfCamera(GameObject vehicle, Transform player)
-        {
-            var cam = player.GetComponentInChildren<Camera>(true);
-            if (cam == null)
+            if (vehicle == null)
                 return;
 
-            var camPos = cam.transform.position;
-            var camFwd = cam.transform.forward;
-            foreach (var r in vehicle.GetComponentsInChildren<Renderer>(true))
+            foreach (var t in vehicle.GetComponentsInChildren<Transform>(true))
             {
-                if (r == null)
+                if (t == null || t == vehicle.transform)
                     continue;
-                var to = r.bounds.center - camPos;
-                // Hide anything sitting in the near forward cone (blocks Game view).
-                if (to.sqrMagnitude < 2.5f * 2.5f && Vector3.Dot(camFwd, to.normalized) > 0.35f)
-                    r.enabled = false;
+                var n = t.name;
+                if (n.IndexOf("foot", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("feet", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("leg", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("shoe", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("boot", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("toe", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("pilot", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("human", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    n.IndexOf("person", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    t.gameObject.SetActive(false);
             }
         }
 

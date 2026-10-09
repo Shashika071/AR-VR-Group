@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ReefExplorer.Survey;
+using ReefExplorer.Audio;
 using UnityEngine;
 
 namespace ReefExplorer.Core
 {
     /// <summary>
-    /// Central mission state machine for Reef Rescue — The Silent Signal.
+    /// Central mission state machine for Reef Rescue — A Safe Place to Grow.
+    /// Replaces the Silent Signal mission controller with the expanded restoration-site mission.
     /// </summary>
     public sealed class MissionController : MonoBehaviour
     {
@@ -16,6 +19,7 @@ namespace ReefExplorer.Core
         [SerializeField] BaselineSurveyData baselineSurvey;
         [SerializeField] SpeciesDefinition[] requiredSpecies = Array.Empty<SpeciesDefinition>();
         [SerializeField] string[] requiredZones = { "zone_coral", "zone_turtle", "zone_ray" };
+        [SerializeField] SiteDefinition[] sites = Array.Empty<SiteDefinition>();
 
         [Header("Runtime")]
         [SerializeField] MissionState state = MissionState.Boot;
@@ -27,6 +31,9 @@ namespace ReefExplorer.Core
         SurveyComparisonResult lastComparison;
         string lastSavedPath;
 
+        // Site tracking
+        readonly Dictionary<string, SiteProgress> siteProgress = new Dictionary<string, SiteProgress>(StringComparer.OrdinalIgnoreCase);
+
         public MissionState State => state;
         public PlayModeType PlayMode => playMode;
         public DiveLogData DiveLog => diveLog;
@@ -35,13 +42,23 @@ namespace ReefExplorer.Core
         public BaselineSurveyData BaselineSurvey => baselineSurvey;
         public IReadOnlyList<SpeciesDefinition> RequiredSpecies => requiredSpecies;
         public IReadOnlyList<string> RequiredZones => requiredZones;
+        public IReadOnlyList<SiteDefinition> Sites => sites;
 
         public bool HasScanner { get; private set; }
         public bool HasBottle { get; private set; }
         public bool BuoyRestored { get; private set; }
         public bool BaselineUnlocked => BuoyRestored;
-        public bool BottleFilled => diveLog.waterSampleCollected;
+        public bool BottleFilled => diveLog.perSiteSamples.Exists(s => s.collected);
         public bool BottleReturned { get; private set; }
+
+        // Legacy compat
+#pragma warning disable CS0618
+        public bool AllSamplesCollected => sites.Length == 0 || diveLog.perSiteSamples.Count >= sites.Length;
+        public bool AllSamplesAnalysed => sites.Length == 0 || diveLog.perSiteSamples.TrueForAll(s => s.analysed);
+#pragma warning restore CS0618
+
+        public string RecommendedSiteId => diveLog.recommendedSiteId;
+        public bool MarkerPlaced => diveLog.markerPlaced;
 
         void Awake()
         {
@@ -63,6 +80,8 @@ namespace ReefExplorer.Core
                 Instance = null;
         }
 
+        // ───────── Mode Selection ─────────
+
         public void SelectPlayMode(PlayModeType mode)
         {
             if (mode == PlayModeType.Unselected)
@@ -70,12 +89,10 @@ namespace ReefExplorer.Core
 
             playMode = mode;
 
-            // Only jump to Briefing from pre-dive states — never rewind a live dive
-            // if Desktop gets re-selected from movement input.
             if (state is MissionState.Boot or MissionState.ModeSelect or MissionState.Briefing)
             {
                 SetState(MissionState.Briefing);
-                SetObjective("Read the mission board, then press Start Dive.");
+                SetObjective("Read the mission board, then press Start Mission.");
             }
         }
 
@@ -92,6 +109,8 @@ namespace ReefExplorer.Core
                 ? "Tutorial: walk forward with WASD to the marked training gate."
                 : "Tutorial: teleport forward to the marked training gate.");
         }
+
+        // ───────── Tutorial ─────────
 
         public void NotifyTutorialStep(string stepId)
         {
@@ -116,10 +135,12 @@ namespace ReefExplorer.Core
                     break;
                 case MissionState.TutorialActivate when stepId == "activate":
                     SetState(MissionState.GatherTools);
-                    SetObjective("Pick up the handheld scanner and the sample bottle from the console.");
+                    SetObjective("Pick up the scanner and a sample bottle from the console.");
                     break;
             }
         }
+
+        // ───────── Tool Pickup ─────────
 
         public void NotifyToolPicked(string toolId)
         {
@@ -131,15 +152,17 @@ namespace ReefExplorer.Core
             if (state == MissionState.GatherTools && HasScanner && HasBottle)
             {
                 SetState(MissionState.RepairBuoy);
-                SetObjective("Follow the path to Reef Buoy Seven. Pick up the loose power cell and insert it into the buoy socket.");
+                SetObjective("Follow the path to the monitoring station. Pick up the loose power cell and insert it.");
             }
         }
+
+        // ───────── Buoy Repair ─────────
 
         public bool TryRestoreBuoy()
         {
             if (BuoyRestored)
             {
-                MissionEvents.RaiseFeedback("Buoy already restored.");
+                MissionEvents.RaiseFeedback("Monitoring station already restored.");
                 return false;
             }
 
@@ -147,17 +170,23 @@ namespace ReefExplorer.Core
                 state != MissionState.GatherTools &&
                 state != MissionState.SurveyAnimals)
             {
-                MissionEvents.RaiseFeedback("Finish gathering your tools, then restore the buoy.");
+                MissionEvents.RaiseFeedback("Finish gathering your tools, then restore the monitoring station.");
                 return false;
             }
 
             BuoyRestored = true;
             diveLog.buoyRestored = true;
+            CompleteObjective("buoy_restored");
             MissionEvents.RaiseBuoyRestored();
             SetState(MissionState.SurveyAnimals);
-            SetObjective("Baseline unlocked. Visit Coral Garden, Seagrass Crossing and Sandy Passage. Scan clownfish, turtle and ray.");
+            SetObjective("Communication restored. Visit Coral Garden, Seagrass Crossing and Sandy Passage.\n" +
+                          "At each site: scan the coral survey point, scan the animal, collect a water sample, and pick up rubbish.");
+            MissionEvents.RaiseFeedback(
+                "Communication restored. We have the previous survey. Now we need to see what has changed. — Maya");
             return true;
         }
+
+        // ───────── Zone Entry ─────────
 
         public void NotifyZoneEntered(string zoneId)
         {
@@ -171,6 +200,49 @@ namespace ReefExplorer.Core
             }
         }
 
+        // ───────── Coral Scanning ─────────
+
+        public bool TryRecordCoralScan(string siteId)
+        {
+            if (string.IsNullOrEmpty(siteId))
+                return false;
+
+            if (!BuoyRestored)
+            {
+                MissionEvents.RaiseFeedback("Restore the monitoring station first to unlock baseline data.");
+                return false;
+            }
+
+            var site = GetSite(siteId);
+            if (site == null)
+            {
+                MissionEvents.RaiseFeedback("Unknown survey site.");
+                return false;
+            }
+
+            var progress = GetOrCreateSiteProgress(siteId);
+            if (progress.coralScanned)
+            {
+                MissionEvents.RaiseFeedback("Coral condition already recorded for this site.");
+                return false;
+            }
+
+            progress.coralScanned = true;
+            diveLog.coralScans.Add(new CoralScanRecord
+            {
+                siteId = siteId,
+                condition = site.CurrentCoralCondition,
+                timeSeconds = Time.timeSinceLevelLoad
+            });
+
+            MissionEvents.RaiseCoralScanned(siteId);
+            MissionEvents.RaiseFeedback($"Coral condition recorded at {site.DisplayName}: {site.CurrentCoralCondition}");
+            CheckSurveyProgress();
+            return true;
+        }
+
+        // ───────── Animal Scanning ─────────
+
         public bool TryRecordAnimalScan(string animalInstanceId, SpeciesDefinition species, string zoneId)
         {
             if (species == null || string.IsNullOrEmpty(animalInstanceId))
@@ -178,7 +250,7 @@ namespace ReefExplorer.Core
 
             if (!BuoyRestored)
             {
-                MissionEvents.RaiseFeedback("Restore Reef Buoy Seven first so the previous survey unlocks.");
+                MissionEvents.RaiseFeedback("Restore the monitoring station first so the previous survey unlocks.");
                 return false;
             }
 
@@ -188,17 +260,28 @@ namespace ReefExplorer.Core
                 return false;
             }
 
+            // Find associated site
+            var siteId = GetSiteIdForZone(zoneId);
+
             var observation = new SpeciesObservation
             {
                 observationId = Guid.NewGuid().ToString("N"),
                 speciesId = species.SpeciesId,
                 speciesDisplayName = species.DisplayName,
                 zoneId = zoneId,
+                siteId = siteId,
                 timeSeconds = Time.timeSinceLevelLoad
             };
 
             diveLog.scannedAnimalIds.Add(animalInstanceId);
             diveLog.observations.Add(observation);
+
+            if (!string.IsNullOrEmpty(siteId))
+            {
+                var progress = GetOrCreateSiteProgress(siteId);
+                progress.animalScanned = true;
+            }
+
             MissionEvents.RaiseAnimalScanned(observation);
 
             var fact = string.IsNullOrWhiteSpace(species.Description)
@@ -206,15 +289,64 @@ namespace ReefExplorer.Core
                 : $"Logged {species.DisplayName}. Fact: {species.Description}";
             MissionEvents.RaiseFeedback(fact);
 
-            if (state == MissionState.SurveyAnimals && HasAllRequiredSpecies())
-            {
-                SetState(MissionState.CollectSample);
-                SetObjective("Go to the marked sampling point and fill the sample bottle.");
-            }
-
+            CheckSurveyProgress();
             return true;
         }
 
+        // ───────── Water Sample Collection ─────────
+
+        public bool TryCollectSample(string siteId, bool bottlePresent, bool inSampleZone)
+        {
+            if (!inSampleZone)
+            {
+                MissionEvents.RaiseFeedback("Move the bottle into the marked sampling area.");
+                return false;
+            }
+
+            if (!bottlePresent)
+            {
+                MissionEvents.RaiseFeedback("Bring a sample bottle into the sampling area.");
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(siteId))
+            {
+                // Legacy compat: fall back to single sample
+                return TryFillBottle(bottlePresent, inSampleZone);
+            }
+
+            if (diveLog.perSiteSamples.Exists(s =>
+                    string.Equals(s.siteId, siteId, StringComparison.OrdinalIgnoreCase) && s.collected))
+            {
+                MissionEvents.RaiseFeedback("Sample already collected from this site.");
+                return false;
+            }
+
+            var sample = new WaterSampleRecord
+            {
+                sampleId = Guid.NewGuid().ToString("N"),
+                siteId = siteId,
+                collected = true,
+                analysed = false,
+                collectionTime = Time.timeSinceLevelLoad
+            };
+            diveLog.perSiteSamples.Add(sample);
+
+            var progress = GetOrCreateSiteProgress(siteId);
+            progress.sampleCollected = true;
+
+            var site = GetSite(siteId);
+            var siteName = site != null ? site.DisplayName : siteId;
+
+            MissionEvents.RaiseWaterSampleCollected(siteId);
+            MissionEvents.RaiseSampleCollected();
+            MissionEvents.RaiseFeedback($"Water sample collected from {siteName}. Label: {siteId}.");
+
+            CheckSurveyProgress();
+            return true;
+        }
+
+        // Legacy single-bottle method
         public bool TryFillBottle(bool bottlePresent, bool inSampleZone)
         {
             if (!inSampleZone)
@@ -229,6 +361,7 @@ namespace ReefExplorer.Core
                 return false;
             }
 
+#pragma warning disable CS0618
             if (diveLog.waterSampleCollected)
             {
                 MissionEvents.RaiseFeedback("Bottle already filled.");
@@ -236,49 +369,254 @@ namespace ReefExplorer.Core
             }
 
             diveLog.waterSampleCollected = true;
+#pragma warning restore CS0618
             MissionEvents.RaiseSampleCollected();
-            SetState(MissionState.ReturnToStation);
-            SetObjective("Return to the research station with your filled bottle.");
+            CheckSurveyProgress();
             return true;
         }
 
+        // ───────── Rubbish Collection ─────────
+
+        public bool TryCollectRubbish(string rubbishId, string siteId)
+        {
+            if (string.IsNullOrEmpty(rubbishId))
+                return false;
+
+            if (diveLog.rubbishCollected.Exists(r =>
+                    string.Equals(r.rubbishId, rubbishId, StringComparison.OrdinalIgnoreCase)))
+            {
+                MissionEvents.RaiseFeedback("This item has already been collected.");
+                return false;
+            }
+
+            diveLog.rubbishCollected.Add(new RubbishRecord
+            {
+                rubbishId = rubbishId,
+                siteId = siteId,
+                timeSeconds = Time.timeSinceLevelLoad
+            });
+
+            MissionEvents.RaiseRubbishCollected(rubbishId);
+            MissionEvents.RaiseFeedback($"Rubbish collected and placed in basket. ({diveLog.rubbishCollected.Count} total)");
+
+            CheckSurveyProgress();
+            return true;
+        }
+
+        // ───────── Hazard Flagging ─────────
+
+        public bool TryFlagHazard(string hazardId, string siteId, string hazardType)
+        {
+            if (string.IsNullOrEmpty(hazardId))
+                return false;
+
+            if (diveLog.hazardsFlagged.Exists(h =>
+                    string.Equals(h.hazardId, hazardId, StringComparison.OrdinalIgnoreCase)))
+            {
+                MissionEvents.RaiseFeedback("This hazard has already been flagged for the specialist team.");
+                return false;
+            }
+
+            diveLog.hazardsFlagged.Add(new HazardRecord
+            {
+                hazardId = hazardId,
+                siteId = siteId,
+                hazardType = hazardType,
+                timeSeconds = Time.timeSinceLevelLoad
+            });
+
+            if (!string.IsNullOrEmpty(siteId))
+            {
+                var progress = GetOrCreateSiteProgress(siteId);
+                progress.hazardFlagged = true;
+            }
+
+            MissionEvents.RaiseHazardFlagged(hazardId);
+            MissionEvents.RaiseFeedback("Hazard flagged for specialist removal team. Do not attempt to remove it yourself.");
+
+            CheckSurveyProgress();
+            return true;
+        }
+
+        // ───────── Station Return ─────────
+
         public void NotifyReturnedToStation()
         {
-            if (state == MissionState.ReturnToStation && diveLog.waterSampleCollected)
+            if (state == MissionState.ReturnToStation)
             {
-                SetState(MissionState.ReturnBottle);
-                SetObjective("Place the filled bottle into the return holder.");
+                SetState(MissionState.AnalyseSamples);
+                SetObjective("Place your water samples into the analyser to get readings for each site.");
+            }
+            else if (state == MissionState.ReturnBottle)
+            {
+                SetState(MissionState.AnalyseSamples);
+                SetObjective("Place your water samples into the analyser.");
             }
         }
+
+        // ───────── Sample Analysis ─────────
+
+        public bool TryAnalyseSample(string siteId)
+        {
+            if (string.IsNullOrEmpty(siteId))
+            {
+                MissionEvents.RaiseFeedback("This sample has no site label. Collect a labelled sample first.");
+                return false;
+            }
+
+            var sample = diveLog.perSiteSamples.Find(s =>
+                string.Equals(s.siteId, siteId, StringComparison.OrdinalIgnoreCase));
+
+            if (sample == null || !sample.collected)
+            {
+                MissionEvents.RaiseFeedback($"No collected sample from this site. Visit the sampling point at the site first.");
+                return false;
+            }
+
+            if (sample.analysed)
+            {
+                MissionEvents.RaiseFeedback("This sample has already been analysed.");
+                return false;
+            }
+
+            sample.analysed = true;
+            sample.analysisTime = Time.timeSinceLevelLoad;
+
+            var progress = GetOrCreateSiteProgress(siteId);
+            progress.sampleAnalysed = true;
+
+            var site = GetSite(siteId);
+            MissionEvents.RaiseWaterSampleAnalysed(siteId);
+
+            if (site != null)
+            {
+                MissionEvents.RaiseFeedback(
+                    $"Analysis complete for {site.DisplayName}.\n" +
+                    $"Clarity: {site.WaterReadings.waterClarity} | " +
+                    $"Temp: {site.WaterReadings.temperatureCelsius:F1} °C ({site.WaterReadings.temperatureSuitability}) | " +
+                    $"pH: {site.WaterReadings.pH:F1}\n" +
+                    $"(Simulated readings for this educational mission)");
+            }
+
+            if (AllSamplesAnalysed)
+            {
+                SetState(MissionState.CompareAndChoose);
+                SetObjective("All samples analysed. Review the comparison board and choose a restoration trial site.");
+                BuildComparison();
+            }
+
+            return true;
+        }
+
+        // ───────── Bottle Return (legacy compat) ─────────
 
         public bool TryAcceptReturnedBottle(bool isFilledBottle)
         {
             if (!isFilledBottle)
             {
-                MissionEvents.RaiseFeedback("Only the filled sample bottle fits this holder.");
-                return false;
-            }
-
-            if (!diveLog.waterSampleCollected)
-            {
-                MissionEvents.RaiseFeedback("Fill the bottle at the sampling point first.");
+                MissionEvents.RaiseFeedback("Only a filled sample bottle fits this holder.");
                 return false;
             }
 
             BottleReturned = true;
             MissionEvents.RaiseBottleReturned();
-            SetState(MissionState.SubmitLog);
-            SetObjective("Review your observations, then Submit Log on the mission board.");
+
+            // Check if we should move to analysis
+            if (state == MissionState.ReturnBottle || state == MissionState.ReturnToStation)
+            {
+                SetState(MissionState.AnalyseSamples);
+                SetObjective("Place water samples into the analyser for each site.");
+            }
+
             return true;
         }
+
+        // ───────── Site Recommendation ─────────
+
+        public bool TryRecommendSite(string siteId)
+        {
+            if (string.IsNullOrEmpty(siteId))
+                return false;
+
+            var site = GetSite(siteId);
+            if (site == null)
+            {
+                MissionEvents.RaiseFeedback("Unknown site.");
+                return false;
+            }
+
+            // Check evidence completeness
+            if (!HasSufficientEvidence())
+            {
+                MissionEvents.RaiseFeedback("Collect more evidence before making a recommendation. Complete all site surveys first.");
+                return false;
+            }
+
+            // Check if choice conflicts with evidence
+            if (!site.SuitableForRestoration)
+            {
+                var reason = string.IsNullOrEmpty(site.UnsuitableReason)
+                    ? $"{site.DisplayName} may not be suitable for restoration."
+                    : site.UnsuitableReason;
+
+                MissionEvents.RaiseRecommendationRejected(siteId, reason);
+                MissionEvents.RaiseFeedback($"Consider: {reason}\nReview the evidence and you may reconsider.");
+                return false;
+            }
+
+            diveLog.recommendedSiteId = siteId;
+            diveLog.recommendationReason = site.SuitabilityReason;
+            CompleteObjective("site_recommended");
+            MissionEvents.RaiseSiteRecommended(siteId);
+            MissionEvents.RaiseFeedback(
+                $"Recommendation accepted: {site.DisplayName}.\n" +
+                $"Reason: {site.SuitabilityReason}\n" +
+                "Carry the research marker to the site and place it in the designated holder.");
+
+            SetState(MissionState.PlaceMarker);
+            SetObjective($"Carry the research marker to {site.DisplayName} and place it in the holder.");
+
+            return true;
+        }
+
+        // ───────── Marker Placement ─────────
+
+        public bool TryPlaceMarker(string atSiteId)
+        {
+            if (string.IsNullOrEmpty(diveLog.recommendedSiteId))
+            {
+                MissionEvents.RaiseFeedback("Choose a restoration site recommendation first.");
+                return false;
+            }
+
+            if (!string.Equals(atSiteId, diveLog.recommendedSiteId, StringComparison.OrdinalIgnoreCase))
+            {
+                var correctSite = GetSite(diveLog.recommendedSiteId);
+                var correctName = correctSite != null ? correctSite.DisplayName : diveLog.recommendedSiteId;
+                MissionEvents.RaiseFeedback($"This marker belongs at the recommended site: {correctName}.");
+                return false;
+            }
+
+            diveLog.markerPlaced = true;
+            diveLog.markerSiteId = atSiteId;
+            CompleteObjective("marker_placed");
+            MissionEvents.RaiseMarkerPlaced();
+            MissionEvents.RaiseFeedback("Research marker placed. Return to the station to submit your final report.");
+
+            SetState(MissionState.SubmitLog);
+            SetObjective("Return to the research station and submit your final report.");
+            return true;
+        }
+
+        // ───────── Submit ─────────
 
         public bool CanSubmit()
         {
             return BuoyRestored &&
-                   BottleReturned &&
-                   diveLog.waterSampleCollected &&
                    HasAllRequiredSpecies() &&
-                   HasAllZones();
+                   HasAllZones() &&
+                   !string.IsNullOrEmpty(diveLog.recommendedSiteId) &&
+                   diveLog.markerPlaced;
         }
 
         public bool TrySubmit()
@@ -290,11 +628,12 @@ namespace ReefExplorer.Core
             }
 
             diveLog.completedAtUtc = DateTime.UtcNow.ToString("o");
-            lastComparison = SurveyAnalyzer.Compare(diveLog, baselineSurvey, requiredSpecies, requiredZones);
+            BuildComparison();
             lastSavedPath = DiveLogSaver.Save(diveLog, lastComparison);
             MissionEvents.RaiseSurveySubmitted();
             SetState(MissionState.Results);
-            SetObjective("First mission complete. Review the survey comparison, then Credits.");
+            SetObjective("Mission complete. Review your dive report.");
+            GameAudio.PlayMissionSuccess();
             return true;
         }
 
@@ -303,6 +642,8 @@ namespace ReefExplorer.Core
             SetState(MissionState.Credits);
             SetObjective("Thanks for diving. Restart or Quit when ready.");
         }
+
+        // ───────── Pause ─────────
 
         public void Pause()
         {
@@ -323,6 +664,8 @@ namespace ReefExplorer.Core
             SetState(stateBeforePause);
         }
 
+        // ───────── Restart ─────────
+
         public void RestartMission()
         {
             Time.timeScale = 1f;
@@ -342,17 +685,32 @@ namespace ReefExplorer.Core
 #endif
         }
 
+        // ───────── Internal helpers ─────────
+
         void ResetSession(string reason)
         {
+            diveLog.schemaVersion = 2;
             diveLog.diveId = Guid.NewGuid().ToString("N");
             diveLog.startedAtUtc = DateTime.UtcNow.ToString("o");
             diveLog.completedAtUtc = null;
+#pragma warning disable CS0618
             diveLog.waterSampleCollected = false;
+#pragma warning restore CS0618
             diveLog.buoyRestored = false;
             diveLog.visitedZones.Clear();
             diveLog.observations.Clear();
             diveLog.scannedAnimalIds.Clear();
+            diveLog.coralScans.Clear();
+            diveLog.perSiteSamples.Clear();
+            diveLog.rubbishCollected.Clear();
+            diveLog.hazardsFlagged.Clear();
+            diveLog.recommendedSiteId = null;
+            diveLog.recommendationReason = null;
+            diveLog.markerPlaced = false;
+            diveLog.markerSiteId = null;
+            diveLog.completedObjectives.Clear();
             tutorialFlags.Clear();
+            siteProgress.Clear();
             HasScanner = false;
             HasBottle = false;
             BottleReturned = false;
@@ -361,6 +719,12 @@ namespace ReefExplorer.Core
             lastSavedPath = null;
             playMode = PlayModeType.Unselected;
             Debug.Log($"[ReefRescue] Session reset ({reason}).");
+        }
+
+        void CompleteObjective(string id)
+        {
+            if (!diveLog.completedObjectives.Contains(id))
+                diveLog.completedObjectives.Add(id);
         }
 
         bool HasAllRequiredSpecies()
@@ -398,19 +762,199 @@ namespace ReefExplorer.Core
             return true;
         }
 
+        bool HasSufficientEvidence()
+        {
+            // Need at least coral scans and animal observations for all sites
+            if (sites == null || sites.Length == 0)
+                return HasAllRequiredSpecies() && HasAllZones();
+
+            foreach (var site in sites)
+            {
+                if (site == null) continue;
+                var progress = GetOrCreateSiteProgress(site.SiteId);
+                if (!progress.coralScanned || !progress.animalScanned)
+                    return false;
+            }
+
+            return true;
+        }
+
+        void CheckSurveyProgress()
+        {
+            if (state != MissionState.SurveyAnimals &&
+                state != MissionState.CollectSample &&
+                state != MissionState.CollectRubbish)
+                return;
+
+            // Check if all sites have been fully surveyed
+            bool allSurveyed = true;
+            if (sites != null && sites.Length > 0)
+            {
+                foreach (var site in sites)
+                {
+                    if (site == null) continue;
+                    var progress = GetOrCreateSiteProgress(site.SiteId);
+                    if (!progress.coralScanned || !progress.animalScanned || !progress.sampleCollected)
+                    {
+                        allSurveyed = false;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                allSurveyed = HasAllRequiredSpecies() && HasAllZones();
+            }
+
+            if (allSurveyed)
+            {
+                SetState(MissionState.ReturnToStation);
+                SetObjective("All sites surveyed. Return to the research station with your samples.");
+            }
+            else
+            {
+                // Update objective with remaining tasks
+                UpdateSurveyObjective();
+            }
+        }
+
+        void UpdateSurveyObjective()
+        {
+            if (sites == null || sites.Length == 0) return;
+
+            var remaining = new List<string>();
+            foreach (var site in sites)
+            {
+                if (site == null) continue;
+                var progress = GetOrCreateSiteProgress(site.SiteId);
+                var tasks = new List<string>();
+                if (!progress.coralScanned) tasks.Add("coral");
+                if (!progress.animalScanned) tasks.Add("animal");
+                if (!progress.sampleCollected) tasks.Add("sample");
+                if (tasks.Count > 0)
+                    remaining.Add($"{site.DisplayName}: {string.Join(", ", tasks)}");
+            }
+
+            if (remaining.Count > 0)
+            {
+                SetObjective("Survey the reef areas. Pick up rubbish as you go.\n" +
+                             "Remaining: " + string.Join(" | ", remaining));
+            }
+        }
+
         string BuildIncompleteMessage()
         {
             if (!BuoyRestored)
-                return "Restore Reef Buoy Seven (insert the power cell) before submitting.";
-            if (!BottleReturned)
-                return "Return the filled bottle to its holder before submitting.";
-            if (!diveLog.waterSampleCollected)
-                return "Water sample is missing.";
+                return "Restore the monitoring station (insert the power cell) before submitting.";
             if (!HasAllRequiredSpecies())
                 return "Scan all required animals before submitting.";
             if (!HasAllZones())
                 return "Visit all three survey zones before submitting.";
+            if (string.IsNullOrEmpty(diveLog.recommendedSiteId))
+                return "Choose a restoration site recommendation before submitting.";
+            if (!diveLog.markerPlaced)
+                return "Place the research marker at the recommended site before submitting.";
             return "Mission incomplete.";
+        }
+
+        void BuildComparison()
+        {
+            lastComparison = SurveyAnalyzer.Compare(diveLog, baselineSurvey, requiredSpecies, requiredZones);
+
+            // Build per-site comparison data
+            lastComparison.siteComparisons.Clear();
+            if (sites != null)
+            {
+                foreach (var site in sites)
+                {
+                    if (site == null) continue;
+                    var progress = GetOrCreateSiteProgress(site.SiteId);
+                    var rubbishForSite = diveLog.rubbishCollected.Count(r =>
+                        string.Equals(r.siteId, site.SiteId, StringComparison.OrdinalIgnoreCase));
+                    var hazardForSite = diveLog.hazardsFlagged.Exists(h =>
+                        string.Equals(h.siteId, site.SiteId, StringComparison.OrdinalIgnoreCase));
+
+                    var sampleRecord = diveLog.perSiteSamples.Find(s =>
+                        string.Equals(s.siteId, site.SiteId, StringComparison.OrdinalIgnoreCase));
+
+                    lastComparison.siteComparisons.Add(new SiteComparisonData
+                    {
+                        siteId = site.SiteId,
+                        displayName = site.DisplayName,
+                        baselineCoralCondition = site.BaselineCoralCondition,
+                        currentCoralCondition = site.CurrentCoralCondition,
+                        waterClarity = site.WaterReadings.waterClarity,
+                        temperature = site.WaterReadings.temperatureCelsius,
+                        temperatureSuitability = site.WaterReadings.temperatureSuitability,
+                        currentStrength = site.WaterReadings.currentStrength,
+                        initialRubbish = site.InitialRubbishCount,
+                        rubbishRemoved = rubbishForSite,
+                        rubbishRemaining = Mathf.Max(0, site.InitialRubbishCount - rubbishForSite),
+                        hasHazard = site.HasHazard,
+                        hazardType = site.HazardType,
+                        hazardFlagged = hazardForSite,
+                        animalObserved = progress.animalScanned ? site.TargetAnimal?.DisplayName : "",
+                        animalNote = progress.animalScanned ? site.AnimalObservationNote : "",
+                        coralScanned = progress.coralScanned,
+                        sampleCollected = sampleRecord?.collected ?? false,
+                        sampleAnalysed = sampleRecord?.analysed ?? false,
+                        suitabilityScore = site.SuitabilityScore,
+                        suitabilityReason = site.SuitableForRestoration
+                            ? site.SuitabilityReason
+                            : site.UnsuitableReason,
+                        observationComplete = progress.coralScanned && progress.animalScanned &&
+                                              (sampleRecord?.analysed ?? false)
+                    });
+                }
+            }
+
+            lastComparison.recommendedSiteId = diveLog.recommendedSiteId;
+            lastComparison.recommendationExplanation = diveLog.recommendationReason;
+            lastComparison.totalRubbishCollected = diveLog.rubbishCollected.Count;
+            lastComparison.totalHazardsFlagged = diveLog.hazardsFlagged.Count;
+        }
+
+        SiteDefinition GetSite(string siteId)
+        {
+            if (sites == null || string.IsNullOrEmpty(siteId))
+                return null;
+
+            foreach (var site in sites)
+            {
+                if (site != null && string.Equals(site.SiteId, siteId, StringComparison.OrdinalIgnoreCase))
+                    return site;
+            }
+
+            return null;
+        }
+
+        string GetSiteIdForZone(string zoneId)
+        {
+            if (sites == null || string.IsNullOrEmpty(zoneId))
+                return "";
+
+            foreach (var site in sites)
+            {
+                if (site != null && string.Equals(site.ZoneId, zoneId, StringComparison.OrdinalIgnoreCase))
+                    return site.SiteId;
+            }
+
+            return "";
+        }
+
+        SiteProgress GetOrCreateSiteProgress(string siteId)
+        {
+            if (siteProgress.TryGetValue(siteId, out var progress))
+                return progress;
+
+            progress = new SiteProgress();
+            siteProgress[siteId] = progress;
+            return progress;
+        }
+
+        public SiteProgress GetSiteProgress(string siteId)
+        {
+            return GetOrCreateSiteProgress(siteId);
         }
 
         void SetState(MissionState next)
@@ -424,5 +968,17 @@ namespace ReefExplorer.Core
         }
 
         void SetObjective(string text) => MissionEvents.RaiseObjective(text);
+    }
+
+    /// <summary>
+    /// Tracks per-site survey progress at runtime (not serialized to the save file directly).
+    /// </summary>
+    public sealed class SiteProgress
+    {
+        public bool coralScanned;
+        public bool animalScanned;
+        public bool sampleCollected;
+        public bool sampleAnalysed;
+        public bool hazardFlagged;
     }
 }

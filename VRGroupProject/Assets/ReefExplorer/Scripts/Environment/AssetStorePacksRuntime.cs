@@ -45,6 +45,11 @@ namespace ReefExplorer.Environment
 
         static bool TryAttachShuttle()
         {
+            var desktopEarly = GameObject.Find("DesktopPlayer");
+            var stuckEarly = desktopEarly != null ? desktopEarly.transform.Find("DiveVehicle") : null;
+            if (stuckEarly != null)
+                Object.Destroy(stuckEarly.gameObject);
+
             if (GameObject.Find("StationDiveCraft") != null)
                 return true;
 
@@ -56,27 +61,9 @@ namespace ReefExplorer.Environment
                 return false;
 
             var desktop = GameObject.Find("DesktopPlayer");
-            if (desktop != null)
-            {
-                var existing = desktop.transform.Find("DiveVehicle");
-                GameObject vehicle;
-                if (existing != null)
-                {
-                    vehicle = existing.gameObject;
-                }
-                else
-                {
-                    vehicle = Object.Instantiate(prefab, desktop.transform);
-                    vehicle.name = "DiveVehicle";
-                    StripColliders(vehicle);
-                }
-
-                // Sit below the camera so the hull never blacks out the Game view.
-                vehicle.transform.localPosition = new Vector3(0f, -0.85f, 0.9f);
-                vehicle.transform.localRotation = Quaternion.identity;
-                FitScale(vehicle, 2.5f);
-                HideNearCameraMeshes(vehicle, desktop.transform);
-            }
+            var stuck = desktop != null ? desktop.transform.Find("DiveVehicle") : null;
+            if (stuck != null)
+                Object.Destroy(stuck.gameObject);
 
             var parkedGo = GameObject.Find("StationDiveCraft");
             if (parkedGo == null)

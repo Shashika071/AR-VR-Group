@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7f1324f52ac09f42a7cb3d4672a703c, type: 3}
+  m_Name: Site_Coral
+  m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SiteDefinition
+  siteId: site_coral
+  displayName: Coral Garden
+  zoneId: zone_coral
+  description: A patch of branching coral colonies on a rocky substrate.
+  baselineCoralCondition: "Moderate \u2014 some bleaching on table corals"
+  baselineSubstrate: Stable rock and rubble
+  currentCoralCondition: "Fair \u2014 storm damage to branching corals, substrate intact"
+  currentSubstrate: Stable rock and rubble, minor loose fragments
+  waterReadings:
+    waterClarity: Moderate
+    temperatureCelsius: 26.5
+    temperatureSuitability: "Suitable (25-29 \xB0C range)"
+    pH: 8.1
+    currentStrength: Moderate
+    summary: Simulated readings for this educational mission.
+  initialRubbishCount: 3
+  rubbishDescription: Plastic bottles and a food container near the reef edge.
+  hasHazard: 0
+  hazardType: 
+  hazardDescription: 
+  hazardBlocksRestoration: 0
+  suitableForRestoration: 1
+  suitabilityReason: Suitable readings, stable substrate and manageable small debris.
+  unsuitableReason: 
+  suitabilityScore: 80
+  targetAnimal: {fileID: 11400000, guid: 9c89f860c8e30994e822cca088af5003, type: 2}
+  animalObservationNote: Clownfish sheltering in surviving anemones.

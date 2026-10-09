@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7f1324f52ac09f42a7cb3d4672a703c, type: 3}
+  m_Name: Site_Sand
+  m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SiteDefinition
+  siteId: site_sand
+  displayName: Sandy Passage
+  zoneId: zone_ray
+  description: A patch of branching coral colonies on a rocky substrate.
+  baselineCoralCondition: "Good \u2014 clear sand"
+  baselineSubstrate: Flat sandy bottom
+  currentCoralCondition: "Good \u2014 clear sand"
+  currentSubstrate: Flat sandy bottom
+  waterReadings:
+    waterClarity: Moderate
+    temperatureCelsius: 26.5
+    temperatureSuitability: "Suitable (25-29 \xB0C range)"
+    pH: 8.1
+    currentStrength: Moderate
+    summary: Simulated readings for this educational mission.
+  initialRubbishCount: 1
+  rubbishDescription: Plastic bottles and a food container near the reef edge.
+  hasHazard: 0
+  hazardType: 
+  hazardDescription: 
+  hazardBlocksRestoration: 0
+  suitableForRestoration: 0
+  suitabilityReason: Suitable readings, stable substrate and manageable small debris.
+  unsuitableReason: Sand provides no hard substrate for coral to attach to.
+  suitabilityScore: 80
+  targetAnimal: {fileID: 11400000, guid: f63ef7ae7f4acda4d93b60240b8ca6b4, type: 2}
+  animalObservationNote: Clownfish sheltering in surviving anemones.

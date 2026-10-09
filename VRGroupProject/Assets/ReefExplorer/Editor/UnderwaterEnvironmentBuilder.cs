@@ -52,6 +52,10 @@ namespace ReefExplorer.EditorTools
 
         static readonly string[] FishPaths =
         {
+            "Assets/Fish/[FBX] Undualte_Triggerfish/Undualte_Triggerfish.FBX",
+            "Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas taeniolatus.FBX",
+            "Assets/Fish/Butterfly/Butterfly.FBX",
+            "Assets/Fish/Anthias1/Anthias1.FBX",
             "Assets/New_fish/Angelfish.obj",
             "Assets/New_fish/Betta_Fish.obj",
             "Assets/New_fish/Undualte_Triggerfish.FBX",
@@ -860,6 +864,27 @@ namespace ReefExplorer.EditorTools
             plant.transform.position = groundPos + Vector3.up * (-bounds.min.y + 0.02f);
         }
 
+        static bool IsSideNoseFish(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return false;
+            return path.IndexOf("[FBX]", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("/Butterfly/", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("/Anthias1/", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        static Vector3 PackFishOffset(string path)
+        {
+            if (path.IndexOf("Butterfly", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(-90f, 90f, 0f);
+            if (path.IndexOf("Anthias", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(0f, 180f, 0f);
+            if (path.IndexOf("Protomelas", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("Taeniolatus", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(90f, 0f, 0f);
+            return new Vector3(0f, -90f, 0f);
+        }
+
         static void PlaceFishSchool(Transform parent, Vector3 center, int count)
         {
             for (var i = 0; i < count; i++)
@@ -870,22 +895,27 @@ namespace ReefExplorer.EditorTools
                     Random.Range(-1.6f, 1.6f));
 
                 GameObject fish = null;
-                // Try a couple of New_fish models if one fails to import.
+                var usedPath = "";
+                // Try a couple of models if one fails to import.
                 for (var attempt = 0; attempt < FishPaths.Length && fish == null; attempt++)
                 {
                     var path = FishPaths[(i + attempt) % FishPaths.Length];
                     if (!TrySpawnModel(parent, path, p, Random.Range(0.32f, 0.48f), null, forceMaterial: false))
                         continue;
                     fish = parent.GetChild(parent.childCount - 1).gameObject;
+                    usedPath = path;
                 }
 
                 if (fish == null)
                     continue;
 
-                fish.name = $"AmbientFish_{center.x:0}_{i}";
+                // Pack FBX fish have the nose on -X. Butterfly is also Z-up.
+                var packFish = IsSideNoseFish(usedPath);
+                fish.name = packFish ? $"PackFish_{center.x:0}_{i}" : $"AmbientFish_{center.x:0}_{i}";
                 fish.isStatic = false;
-                // New_fish OBJs/FBXs are authored nose-down (-Y). Level them for swim.
-                fish.transform.rotation = Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
+                fish.transform.rotation = packFish
+                    ? Quaternion.Euler(0f, Random.Range(0f, 360f), 0f)
+                    : Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
                 foreach (var r in fish.GetComponentsInChildren<Renderer>(true))
                     r.shadowCastingMode = ShadowCastingMode.Off;
 
@@ -894,7 +924,9 @@ namespace ReefExplorer.EditorTools
                 so.FindProperty("center").vector3Value = p;
                 so.FindProperty("extents").vector3Value = new Vector3(2.2f, 0.35f, 2.2f);
                 so.FindProperty("speed").floatValue = Random.Range(0.22f, 0.38f);
-                so.FindProperty("meshEulerOffset").vector3Value = new Vector3(-90f, 0f, 0f);
+                so.FindProperty("meshEulerOffset").vector3Value = packFish
+                    ? PackFishOffset(usedPath)
+                    : new Vector3(-90f, 0f, 0f);
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
         }

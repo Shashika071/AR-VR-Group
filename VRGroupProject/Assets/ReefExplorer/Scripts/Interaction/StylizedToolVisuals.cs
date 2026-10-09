@@ -26,6 +26,107 @@ namespace ReefExplorer.Interaction
             UpgradeBottle();
             UpgradeBuoy();
             UpgradeAnimals();
+            UpgradeCoralSurveyPoints();
+            UpgradeRubbish();
+            UpgradeHazards();
+            UpgradeRecommendationMarker();
+        }
+
+        static void UpgradeCoralSurveyPoints()
+        {
+            foreach (var cp in FindObjectsByType<CoralSurveyPoint>(FindObjectsSortMode.None))
+            {
+                var go = cp.gameObject;
+                if (go.transform.Find("Visual") != null) continue;
+
+                // Make it look like a survey marker stake
+                var visual = new GameObject("Visual");
+                visual.transform.SetParent(go.transform, false);
+
+                CreatePart(visual.transform, "Post", PrimitiveType.Cylinder,
+                    new Vector3(0f, 0.15f, 0f), new Vector3(0.04f, 0.2f, 0.04f),
+                    new Color(0.9f, 0.35f, 0.5f));
+                CreatePart(visual.transform, "Flag", PrimitiveType.Cube,
+                    new Vector3(0.08f, 0.32f, 0f), new Vector3(0.12f, 0.08f, 0.02f),
+                    new Color(1f, 0.4f, 0.55f));
+            }
+        }
+
+        static void UpgradeRubbish()
+        {
+            var rubbishItems = FindObjectsByType<RubbishItem>(FindObjectsSortMode.None);
+            int idx = 0;
+            foreach (var ri in rubbishItems)
+            {
+                var go = ri.gameObject;
+                if (go.transform.Find("Visual") != null) continue;
+
+                var visual = new GameObject("Visual");
+                visual.transform.SetParent(go.transform, false);
+
+                // Alternate between can and bag shapes
+                if (idx % 2 == 0)
+                {
+                    CreatePart(visual.transform, "Can", PrimitiveType.Cylinder,
+                        Vector3.zero, new Vector3(0.06f, 0.08f, 0.06f),
+                        new Color(0.7f, 0.7f, 0.7f));
+                    CreatePart(visual.transform, "Label", PrimitiveType.Cube,
+                        new Vector3(0f, 0f, 0.035f), new Vector3(0.05f, 0.06f, 0.005f),
+                        new Color(0.8f, 0.2f, 0.2f));
+                }
+                else
+                {
+                    CreatePart(visual.transform, "Bag", PrimitiveType.Cube,
+                        Vector3.zero, new Vector3(0.1f, 0.07f, 0.06f),
+                        new Color(0.3f, 0.3f, 0.35f));
+                }
+                idx++;
+            }
+        }
+
+        static void UpgradeHazards()
+        {
+            foreach (var hf in FindObjectsByType<HazardFlag>(FindObjectsSortMode.None))
+            {
+                var go = hf.gameObject;
+                if (go.transform.Find("Visual") != null) continue;
+
+                var visual = new GameObject("Visual");
+                visual.transform.SetParent(go.transform, false);
+
+                // Barrel shape for toxic hazard
+                CreatePart(visual.transform, "Barrel", PrimitiveType.Cylinder,
+                    new Vector3(0f, 0.2f, 0f), new Vector3(0.25f, 0.35f, 0.25f),
+                    new Color(0.6f, 0.5f, 0.15f));
+                CreatePart(visual.transform, "Stripe1", PrimitiveType.Cube,
+                    new Vector3(0f, 0.15f, 0.13f), new Vector3(0.22f, 0.06f, 0.01f),
+                    new Color(0.1f, 0.1f, 0.1f));
+                CreatePart(visual.transform, "Stripe2", PrimitiveType.Cube,
+                    new Vector3(0f, 0.25f, 0.13f), new Vector3(0.22f, 0.06f, 0.01f),
+                    new Color(0.1f, 0.1f, 0.1f));
+                // Skull icon approximation
+                CreatePart(visual.transform, "Warning", PrimitiveType.Sphere,
+                    new Vector3(0f, 0.35f, 0.13f), new Vector3(0.08f, 0.08f, 0.02f),
+                    new Color(1f, 0.2f, 0.1f));
+            }
+        }
+
+        static void UpgradeRecommendationMarker()
+        {
+            var marker = GameObject.Find("RecommendationMarker");
+            if (marker == null || marker.transform.Find("Visual") != null) return;
+
+            var visual = new GameObject("Visual");
+            visual.transform.SetParent(marker.transform, false);
+
+            CreatePart(visual.transform, "Pole", PrimitiveType.Cylinder,
+                Vector3.zero, new Vector3(0.03f, 0.18f, 0.03f),
+                new Color(0.3f, 0.85f, 0.5f));
+            CreatePart(visual.transform, "Flag", PrimitiveType.Cube,
+                new Vector3(0.06f, 0.15f, 0f), new Vector3(0.08f, 0.06f, 0.01f),
+                new Color(0.2f, 1f, 0.45f));
+
+            AddFloatingLabel(marker.transform, "MARKER", new Vector3(0f, 0.3f, 0f), 0.012f);
         }
 
         static void UpgradeScanner()
