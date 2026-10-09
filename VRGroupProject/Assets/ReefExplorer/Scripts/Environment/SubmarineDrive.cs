@@ -25,6 +25,10 @@ namespace ReefExplorer.Environment
         float ignoreExitUntil;
         Renderer[] hiddenPlayer;
         Transform window;
+        AudioSource motor;
+        static AudioClip motorClip;
+        static Renderer[] rockCache;
+        static float rockCacheUntil;
 
         void OnEnable() => MissionEvents.MissionRestarted += OnRestart;
         void OnDisable() => MissionEvents.MissionRestarted -= OnRestart;
@@ -88,6 +92,7 @@ namespace ReefExplorer.Environment
             }
 
             Follow();
+            StartMotor();
             MissionEvents.RaiseFeedback("Driving the submarine. WASD move, Space up, Ctrl down, T exit.");
         }
 
@@ -129,7 +134,14 @@ namespace ReefExplorer.Environment
 
             var pos = transform.position + driveNose * (thrust * 7f * Time.deltaTime);
             pos.y = Mathf.Max(0.35f, pos.y + lift * 3.4f * Time.deltaTime);
+            pos = ClearOfRocks(transform.position, pos);
             transform.position = pos;
+            if (motor != null)
+            {
+                var moving = Mathf.Abs(thrust) + Mathf.Abs(lift) > 0.01f;
+                motor.volume = moving ? 1f : 0.72f;
+                motor.pitch = moving ? 1.12f : 0.9f;
+            }
         }
 
         void LateUpdate()
@@ -186,6 +198,8 @@ namespace ReefExplorer.Environment
 
             if (body != null)
                 body.enabled = true;
+            if (motor != null)
+                motor.Stop();
             if (window != null)
                 window.gameObject.SetActive(false);
 
@@ -196,6 +210,164 @@ namespace ReefExplorer.Environment
         {
             if (boarded)
                 Exit();
+        }
+
+        void StartMotor()
+        {
+            if (motor == null)
+            {
+                motor = gameObject.AddComponent<AudioSource>();
+                motor.playOnAwake = false;
+                motor.loop = true;
+                motor.spatialBlend = 0f;
+                motor.dopplerLevel = 0f;
+                motor.clip = MotorClip();
+            }
+
+            motor.volume = 0.72f;
+            motor.pitch = 0.9f;
+            if (!motor.isPlaying)
+                motor.Play();
+        }
+
+        static AudioClip MotorClip()
+        {
+            if (motorClip != null)
+                return motorClip;
+
+            const int rate = 22050;
+            const float seconds = 1f;
+            var count = (int)(rate * seconds);
+            var clip = AudioClip.Create("SubmarineMotor", count, 1, rate, false);
+            var data = new float[count];
+            for (var i = 0; i < count; i++)
+            {
+                var t = i / (float)rate;
+                var hum = Mathf.Sin(2f * Mathf.PI * 58f * t);
+                var low = Mathf.Sin(2f * Mathf.PI * 29f * t) * 0.7f;
+                var buzz = Mathf.Sin(2f * Mathf.PI * 116f * t) * 0.22f;
+                data[i] = Mathf.Clamp((hum + low + buzz) * 0.72f, -1f, 1f);
+            }
+
+            clip.SetData(data, 0);
+            motorClip = clip;
+            return clip;
+        }
+
+        Vector3 ClearOfRocks(Vector3 from, Vector3 to)
+        {
+            if (OverlapsRock(from))
+                from = PushOutOfRocks(from);
+
+            if (!OverlapsRock(to))
+                return to;
+
+            var xOnly = from;
+            xOnly.x = to.x;
+            xOnly.y = to.y;
+            if (!OverlapsRock(xOnly))
+                return xOnly;
+
+            var zOnly = from;
+            zOnly.z = to.z;
+            zOnly.y = to.y;
+            if (!OverlapsRock(zOnly))
+                return zOnly;
+
+            var yOnly = from;
+            yOnly.y = to.y;
+            return OverlapsRock(yOnly) ? from : yOnly;
+        }
+
+        Vector3 PushOutOfRocks(Vector3 craftPos)
+        {
+            var pos = craftPos;
+            for (var step = 0; step < 6 && OverlapsRock(pos); step++)
+            {
+                var hull = ShiftedHull(pos);
+                var away = Vector3.zero;
+                foreach (var renderer in rockCache)
+                {
+                    if (!RockHits(renderer, hull))
+                        continue;
+                    var push = hull.center - renderer.bounds.center;
+                    push.y = 0f;
+                    if (push.sqrMagnitude < 0.01f)
+                        push = Vector3.forward;
+                    away += push.normalized;
+                }
+
+                if (away.sqrMagnitude < 0.01f)
+                    break;
+                pos += away.normalized * 0.45f;
+                pos.y = Mathf.Max(0.35f, pos.y);
+            }
+
+            return pos;
+        }
+
+        bool OverlapsRock(Vector3 craftPos)
+        {
+            CacheRocks();
+            if (rockCache == null || rockCache.Length == 0)
+                return false;
+
+            var hull = ShiftedHull(craftPos);
+            foreach (var renderer in rockCache)
+            {
+                if (RockHits(renderer, hull))
+                    return true;
+            }
+
+            return false;
+        }
+
+        Bounds ShiftedHull(Vector3 craftPos)
+        {
+            var hull = HullBounds();
+            var center = hull.center + (craftPos - transform.position);
+            var ext = hull.extents;
+            ext.x = Mathf.Max(0.55f, ext.x * 0.92f);
+            ext.z = Mathf.Max(0.55f, ext.z * 0.92f);
+            ext.y = Mathf.Max(0.4f, ext.y * 0.85f);
+            return new Bounds(center, ext * 2f);
+        }
+
+        static bool RockHits(Renderer renderer, Bounds hull)
+        {
+            return renderer != null && renderer.enabled && renderer.gameObject.activeInHierarchy &&
+                   hull.Intersects(renderer.bounds);
+        }
+
+        void CacheRocks()
+        {
+            if (rockCache != null && Time.time < rockCacheUntil)
+                return;
+
+            rockCacheUntil = Time.time + 3f;
+            var list = new System.Collections.Generic.List<Renderer>();
+            foreach (var renderer in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (renderer == null || renderer.transform.IsChildOf(transform))
+                    continue;
+                if (!NamedRock(renderer.transform))
+                    continue;
+                list.Add(renderer);
+            }
+
+            rockCache = list.ToArray();
+        }
+
+        static bool NamedRock(Transform t)
+        {
+            while (t != null)
+            {
+                if (t.name.IndexOf("Rock", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+                t = t.parent;
+            }
+
+            return false;
         }
 
         void PromptNearby()

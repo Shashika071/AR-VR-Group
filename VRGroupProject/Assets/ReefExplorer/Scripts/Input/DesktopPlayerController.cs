@@ -305,6 +305,20 @@ namespace ReefExplorer.Input
                 return;
             }
 
+            var marker = heldTransform != null ? heldTransform.GetComponent<RecommendationMarker>() : null;
+            if (marker != null)
+            {
+                var from = cameraTransform != null ? cameraTransform.position : transform.position;
+                if (MarkerHolder.TryPlaceNearest(from, marker))
+                {
+                    ReleaseHoldKeepPlaced();
+                    return;
+                }
+
+                MissionEvents.RaiseFeedback("Carry the marker to the holder at your chosen site and press E.");
+                return;
+            }
+
             if (heldTransform != null)
             {
                 MissionEvents.RaiseFeedback("Already holding something. Press Q to drop first.");
@@ -465,6 +479,8 @@ namespace ReefExplorer.Input
                 MissionEvents.RaiseFeedback("Hold the left mouse button and aim at coral or a fish.");
             else if (heldTransform.GetComponent<RubbishItem>() != null)
                 MissionEvents.RaiseFeedback("Carry this rubbish to the yellow bin at the station.");
+            else if (heldTransform.GetComponent<RecommendationMarker>() != null)
+                MissionEvents.RaiseFeedback("Recommendation marker. Carry it to the holder at your chosen site and press E.");
             else if (cell == null && heldTransform.GetComponent<VehiclePowerPack>() == null)
                 MissionEvents.RaiseFeedback($"Picked up {heldTransform.name}. Press Q to drop.");
             else if (cell == null)

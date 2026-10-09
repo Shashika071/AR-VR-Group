@@ -236,6 +236,8 @@ namespace ReefExplorer.UI
             if (toxinNeeded || toxinTotal > 0)
                 rows.Add(Make("toxin", toxinTotal > 0 && toxinCleared >= toxinTotal, "Dispose toxin  " + toxinCleared + "/" + toxinTotal,
                     "Pick up the disposal tool on the table, stand in each green cloud, and press E."));
+            rows.Add(Make("marker", mc.MarkerPlaced, "Recommendation marker",
+                "Choose a restoration site, pick up the green marker on the console, carry it to that site's holder, and press E."));
 
             if (selected >= rows.Count)
                 selected = 0;

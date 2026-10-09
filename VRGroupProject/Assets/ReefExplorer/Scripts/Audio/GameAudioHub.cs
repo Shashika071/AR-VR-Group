@@ -49,8 +49,11 @@ namespace ReefExplorer.Audio
 
         public void SetAmbienceVolume(float linear01)
         {
+            var level = Mathf.Clamp01(linear01);
+            if (ambienceSource != null)
+                ambienceSource.volume = level;
             if (mixer != null)
-                mixer.SetFloat("AmbienceVolume", LinearToDb(linear01));
+                mixer.SetFloat("AmbienceVolume", LinearToDb(Mathf.Max(level, 0.0001f)));
         }
 
         public void SetEffectsVolume(float linear01)
@@ -85,9 +88,10 @@ namespace ReefExplorer.Audio
             ambienceSource.clip = clip;
             ambienceSource.loop = true;
             ambienceSource.spatialBlend = 0f;
-            ambienceSource.volume = volume;
-            if (ambienceGroup != null)
-                ambienceSource.outputAudioMixerGroup = ambienceGroup;
+            ambienceSource.volume = Mathf.Clamp01(volume);
+            ambienceSource.outputAudioMixerGroup = null;
+            if (ambienceSource.GetComponent<SpeakerBoost>() == null)
+                ambienceSource.gameObject.AddComponent<SpeakerBoost>();
             ambienceSource.Play();
         }
 
@@ -145,6 +149,20 @@ namespace ReefExplorer.Audio
         static float LinearToDb(float linear)
         {
             return Mathf.Log10(Mathf.Clamp(linear, 0.0001f, 1f)) * 20f;
+        }
+    }
+
+    /// <summary>
+    /// Raises a quiet clip so laptop speakers can hear it at full volume.
+    /// </summary>
+    sealed class SpeakerBoost : MonoBehaviour
+    {
+        const float Gain = 2.8f;
+
+        void OnAudioFilterRead(float[] data, int channels)
+        {
+            for (var i = 0; i < data.Length; i++)
+                data[i] = Mathf.Clamp(data[i] * Gain, -1f, 1f);
         }
     }
 }

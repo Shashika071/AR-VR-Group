@@ -87,7 +87,7 @@ namespace ReefExplorer.Environment
             var player = GameObject.FindGameObjectWithTag("Player");
             var from = player != null ? player.transform.position : Vector3.zero;
             var inTank = player != null && NearTank(from);
-            if (!paused)
+            if (!paused && !SubmarineDrive.IsDriving)
             {
                 air = Mathf.Max(0f, air - 0.45f * Time.deltaTime);
                 if (air <= 0f)
