@@ -903,17 +903,22 @@ namespace ReefExplorer.EditorTools
             var briefing = CreateUiPanel(canvasGo.transform, "BriefingPanel", new Vector2(1040f, 680f), new Color(0.03f, 0.12f, 0.18f, 0.96f));
             var title = CreateUiText(briefing.transform, "Title", "Reef Rescue — The Silent Signal", 36, TextAnchor.UpperCenter, new Vector2(0f, 290f), new Vector2(960f, 50f));
             var body = CreateUiText(briefing.transform, "Body",
-                "Welcome, diver. Restore the buoy, survey wildlife, return a water sample.",
+                "FIELD BRIEF // CONSERVATION OPERATION\n\n" +
+                "The Reef Seven monitoring buoy has gone silent. Restore its signal, " +
+                "collect reliable evidence, and help the team choose a safe coral-restoration site.\n\n" +
+                "YOUR OBJECTIVES\n" +
+                "01  Restore the monitoring buoy with the power cell\n" +
+                "02  Survey Coral Garden, Seagrass Crossing and Sandy Passage\n" +
+                "03  Scan wildlife, coral, hazards and remove rubbish\n" +
+                "04  Collect and analyse water samples from every site\n" +
+                "05  Recommend a restoration site and place the marker\n" +
+                "06  Submit the final survey report\n\n" +
+                "STARTING THE DIVE\n" +
+                "[D] Desktop    [V] VR / Simulator    [ENTER] Begin mission",
                 22, TextAnchor.UpperLeft, new Vector2(0f, 140f), new Vector2(960f, 220f));
 
-            var xrBtn = CreateUiButton(briefing.transform, "Btn_XR", "VR / Simulator", new Vector2(-300f, -200f));
-            var deskBtn = CreateUiButton(briefing.transform, "Btn_Desktop", "Desktop", new Vector2(-80f, -200f));
-            var startBtn = CreateUiButton(briefing.transform, "Btn_Start", "Start Dive", new Vector2(140f, -200f));
             var submitBtn = CreateUiButton(briefing.transform, "Btn_Submit", "Submit Log", new Vector2(320f, -200f));
             submitBtn.gameObject.SetActive(false);
-            var creditsBtn = CreateUiButton(briefing.transform, "Btn_Credits", "Credits", new Vector2(-300f, -280f));
-            var restartBtn = CreateUiButton(briefing.transform, "Btn_Restart", "Restart", new Vector2(-80f, -280f));
-            var quitBtn = CreateUiButton(briefing.transform, "Btn_Quit", "Quit", new Vector2(140f, -280f));
 
             var resultsPanel = CreateUiPanel(canvasGo.transform, "ResultsPanel", new Vector2(1040f, 680f), new Color(0.03f, 0.14f, 0.16f, 0.97f));
             resultsPanel.SetActive(false);
@@ -943,13 +948,7 @@ namespace ReefExplorer.EditorTools
                 bso.FindProperty("titleText").objectReferenceValue = title;
                 bso.FindProperty("bodyText").objectReferenceValue = body;
                 bso.FindProperty("resultsText").objectReferenceValue = results;
-                bso.FindProperty("startButton").objectReferenceValue = startBtn;
-                bso.FindProperty("xrButton").objectReferenceValue = xrBtn;
-                bso.FindProperty("desktopButton").objectReferenceValue = deskBtn;
                 bso.FindProperty("submitButton").objectReferenceValue = submitBtn;
-                bso.FindProperty("creditsButton").objectReferenceValue = creditsBtn;
-                bso.FindProperty("restartButton").objectReferenceValue = restartBtn;
-                bso.FindProperty("quitButton").objectReferenceValue = quitBtn;
                 bso.FindProperty("modeSelector").objectReferenceValue = modeSelector;
                 bso.FindProperty("briefingPanel").objectReferenceValue = briefing;
                 bso.FindProperty("resultsPanel").objectReferenceValue = resultsPanel;
