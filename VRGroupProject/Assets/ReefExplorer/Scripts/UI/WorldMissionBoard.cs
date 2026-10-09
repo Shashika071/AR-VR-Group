@@ -23,6 +23,10 @@ namespace ReefExplorer.UI
 
         void Awake()
         {
+            var canvasScaler = GetComponentInParent<CanvasScaler>();
+            if (canvasScaler != null)
+                canvasScaler.dynamicPixelsPerUnit = 14f;
+
             BuildIntroductionPanel();
 
             if (briefingPanel != null)
@@ -50,12 +54,13 @@ namespace ReefExplorer.UI
             if (titleText != null)
             {
                 titleText.text = "REEF RESCUE";
-                titleText.fontSize = 52;
+                titleText.fontSize = 60;
                 titleText.fontStyle = FontStyle.Bold;
                 titleText.color = new Color(0.55f, 0.96f, 0.93f);
                 titleText.alignment = TextAnchor.MiddleCenter;
                 titleText.rectTransform.anchoredPosition = new Vector2(0f, 276f);
-                titleText.rectTransform.sizeDelta = new Vector2(960f, 66f);
+                titleText.rectTransform.sizeDelta = new Vector2(960f, 76f);
+                AddTextOutline(titleText, new Color(0.01f, 0.06f, 0.09f, 0.9f), 1.5f);
             }
 
             if (bodyText != null)
@@ -63,13 +68,13 @@ namespace ReefExplorer.UI
 
             CreatePanelLine(briefingPanel.transform, "TopAccent", new Vector2(0f, 236f), new Vector2(760f, 3f),
                 new Color(0.18f, 0.83f, 0.78f, 0.9f));
-            CreateText(briefingPanel.transform, "Subtitle", "THE SILENT SIGNAL", 18, FontStyle.Bold,
+            CreateText(briefingPanel.transform, "Subtitle", "THE SILENT SIGNAL", 22, FontStyle.Bold,
                 new Color(0.96f, 0.73f, 0.34f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 218f), new Vector2(960f, 28f));
+                new Vector2(0f, 214f), new Vector2(960f, 34f));
             CreateText(briefingPanel.transform, "Welcome",
                 "A calm underwater field mission to restore a monitoring buoy and protect the reef.",
-                22, FontStyle.Normal, new Color(0.85f, 0.91f, 0.93f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 170f), new Vector2(900f, 40f));
+                26, FontStyle.Normal, new Color(0.9f, 0.96f, 0.97f), TextAnchor.MiddleCenter,
+                new Vector2(0f, 166f), new Vector2(920f, 52f));
 
             CreateCard(briefingPanel.transform, "StepOne", "01", "RESTORE", "Power the silent reef buoy", new Vector2(-260f, 80f));
             CreateCard(briefingPanel.transform, "StepTwo", "02", "SURVEY", "Record wildlife and water evidence", new Vector2(0f, 80f));
@@ -78,12 +83,12 @@ namespace ReefExplorer.UI
             CreateText(briefingPanel.transform, "Controls",
                 "DESKTOP  WASD move   •   Right-click look   •   E interact\n" +
                 "VR / SIMULATOR  Space + mouse aim   •   G grab   •   Trigger activate",
-                16, FontStyle.Normal, new Color(0.64f, 0.75f, 0.78f), TextAnchor.MiddleCenter,
-                new Vector2(0f, -40f), new Vector2(900f, 54f));
+                19, FontStyle.Normal, new Color(0.76f, 0.86f, 0.88f), TextAnchor.MiddleCenter,
+                new Vector2(0f, -40f), new Vector2(940f, 64f));
             CreateText(briefingPanel.transform, "Footer",
                 "Your observations become evidence for a real conservation decision.",
-                17, FontStyle.Italic, new Color(0.55f, 0.7f, 0.72f), TextAnchor.MiddleCenter,
-                new Vector2(0f, -126f), new Vector2(900f, 30f));
+                19, FontStyle.Italic, new Color(0.68f, 0.8f, 0.82f), TextAnchor.MiddleCenter,
+                new Vector2(0f, -126f), new Vector2(920f, 34f));
 
             var begin = CreatePrimaryButton(briefingPanel.transform, "BeginDive", "BEGIN DIVE", new Vector2(0f, -218f));
             begin.onClick.AddListener(() =>
@@ -125,10 +130,21 @@ namespace ReefExplorer.UI
             text.alignment = alignment;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Overflow;
+            AddTextOutline(text, new Color(0.01f, 0.05f, 0.08f, 0.8f), 1f);
             var rect = text.rectTransform;
             rect.sizeDelta = size;
             rect.anchoredPosition = position;
             return text;
+        }
+
+        static void AddTextOutline(Text text, Color color, float distance)
+        {
+            var outline = text.gameObject.GetComponent<Outline>();
+            if (outline == null)
+                outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = color;
+            outline.effectDistance = new Vector2(distance, distance);
+            outline.useGraphicAlpha = true;
         }
 
         static void CreateCard(Transform parent, string name, string number, string heading, string detail, Vector2 position)
@@ -142,15 +158,15 @@ namespace ReefExplorer.UI
             rect.sizeDelta = new Vector2(220f, 116f);
             rect.anchoredPosition = position;
 
-            CreateText(go.transform, "Number", number, 18, FontStyle.Bold,
+            CreateText(go.transform, "Number", number, 21, FontStyle.Bold,
                 new Color(0.96f, 0.73f, 0.34f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 38f), new Vector2(200f, 24f));
-            CreateText(go.transform, "Heading", heading, 20, FontStyle.Bold,
+                new Vector2(0f, 38f), new Vector2(200f, 28f));
+            CreateText(go.transform, "Heading", heading, 24, FontStyle.Bold,
                 new Color(0.55f, 0.96f, 0.93f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 10f), new Vector2(200f, 28f));
-            CreateText(go.transform, "Detail", detail, 15, FontStyle.Normal,
+                new Vector2(0f, 10f), new Vector2(200f, 32f));
+            CreateText(go.transform, "Detail", detail, 17, FontStyle.Normal,
                 new Color(0.78f, 0.87f, 0.88f), TextAnchor.MiddleCenter,
-                new Vector2(0f, -23f), new Vector2(190f, 38f));
+                new Vector2(0f, -23f), new Vector2(200f, 42f));
         }
 
         static Button CreatePrimaryButton(Transform parent, string name, string label, Vector2 position)
@@ -170,7 +186,7 @@ namespace ReefExplorer.UI
             var rect = go.GetComponent<RectTransform>();
             rect.sizeDelta = new Vector2(300f, 62f);
             rect.anchoredPosition = position;
-            CreateText(go.transform, "Label", label, 22, FontStyle.Bold, Color.white,
+            CreateText(go.transform, "Label", label, 26, FontStyle.Bold, Color.white,
                 TextAnchor.MiddleCenter, Vector2.zero, new Vector2(300f, 62f));
             return button;
         }

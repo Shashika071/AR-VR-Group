@@ -890,7 +890,7 @@ namespace ReefExplorer.EditorTools
             var canvasGo = new GameObject("MissionCanvas");
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
-            canvasGo.AddComponent<CanvasScaler>().dynamicPixelsPerUnit = 10f;
+            canvasGo.AddComponent<CanvasScaler>().dynamicPixelsPerUnit = 14f;
             canvasGo.AddComponent<GraphicRaycaster>();
             canvasGo.AddComponent<TrackedDeviceGraphicRaycaster>();
             var rt = canvasGo.GetComponent<RectTransform>();
