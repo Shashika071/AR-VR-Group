@@ -92,8 +92,7 @@ namespace ReefExplorer.UI
                 or MissionState.CollectSample or MissionState.CollectRubbish
                 or MissionState.ReturnToStation or MissionState.ReturnBottle
                 or MissionState.AnalyseSamples or MissionState.CompareAndChoose or MissionState.PlaceMarker
-                or MissionState.SubmitLog or MissionState.Results or MissionState.Credits or MissionState.Complete
-                or MissionState.Paused;
+                or MissionState.SubmitLog or MissionState.Results or MissionState.Credits or MissionState.Complete;
             SetHudVisible(show);
             RefreshProgress();
             RefreshControls();

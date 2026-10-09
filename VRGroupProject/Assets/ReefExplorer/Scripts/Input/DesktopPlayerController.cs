@@ -34,7 +34,6 @@ namespace ReefExplorer.Input
         readonly Vector3 heldLocalOffset = new Vector3(0.28f, -0.18f, 0.45f);
         readonly Vector3 heldScale = new Vector3(0.65f, 0.65f, 0.65f);
         Vector3 heldOriginalScale = Vector3.one;
-        string lookHint = "Right Click look | WASD move | Space jump | E grab | Q drop";
 
         public bool IsActiveController => isActiveAndEnabled;
 
@@ -76,7 +75,6 @@ namespace ReefExplorer.Input
             HandleInteract();
             UpdateHeldObject();
             TrackTutorialMove();
-            UpdateLookHint();
         }
 
         void EnsureDesktopModeIfNeeded()
@@ -426,29 +424,6 @@ namespace ReefExplorer.Input
             heldTransform.SetPositionAndRotation(target, cameraTransform.rotation);
         }
 
-        void UpdateLookHint()
-        {
-            if (heldTransform != null)
-            {
-                lookHint = $"Holding: {heldTransform.name} | Q drop | Left Click use scanner";
-                return;
-            }
-
-            if (cameraTransform != null &&
-                Physics.SphereCast(cameraTransform.position, 0.2f, cameraTransform.forward, out var hit,
-                    interactRange, ~0, QueryTriggerInteraction.Ignore) &&
-                hit.collider.GetComponentInParent<XRGrabInteractable>() != null)
-            {
-                lookHint = $"Look at: {hit.collider.transform.root.name} | Press E to grab";
-            }
-            else
-            {
-                lookHint = lookEnabled
-                    ? "LOOK ON — move mouse to look | Right Click again to stop | Space jump | E grab"
-                    : "Right Click look | WASD move | Space jump | E grab | 1/2/3 tools";
-            }
-        }
-
         Vector3 lastPos;
         void TrackTutorialMove()
         {
@@ -472,7 +447,7 @@ namespace ReefExplorer.Input
                 ? MissionController.Instance.State
                 : MissionState.ModeSelect;
             // Hide clutter while reading the briefing board.
-            if (state is MissionState.Boot or MissionState.ModeSelect or MissionState.Briefing)
+            if (state is MissionState.Boot or MissionState.ModeSelect or MissionState.Briefing or MissionState.Paused)
                 return;
 
             // Simple crosshair
@@ -482,14 +457,6 @@ namespace ReefExplorer.Input
             GUI.DrawTexture(new Rect(cx - 8f, cy - 1f, 16f, 2f), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(cx - 1f, cy - 8f, 2f, 16f), Texture2D.whiteTexture);
 
-            var style = new GUIStyle(GUI.skin.box)
-            {
-                fontSize = 16,
-                alignment = TextAnchor.MiddleCenter,
-                wordWrap = true
-            };
-            style.normal.textColor = Color.white;
-            GUI.Box(new Rect(Screen.width * 0.5f - 280f, Screen.height - 70f, 560f, 50f), lookHint, style);
         }
     }
 }
