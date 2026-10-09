@@ -1,7 +1,6 @@
 using ReefExplorer.Core;
 using ReefExplorer.Input;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace ReefExplorer.UI
@@ -25,53 +24,32 @@ namespace ReefExplorer.UI
         void Awake()
         {
             if (titleText != null)
-            {
-                titleText.text = "<color=#62E6E1>REEF RESCUE</color>\n<color=#F4FBFF>THE SILENT SIGNAL</color>";
-                titleText.fontSize = 42;
-                titleText.color = new Color(0.96f, 0.99f, 1f);
-                titleText.lineSpacing = 0.85f;
-            }
+                titleText.text = "Reef Rescue — A Safe Place to Grow";
 
             if (bodyText != null)
             {
                 bodyText.text =
-                    "<color=#62E6E1>FIELD BRIEF // CONSERVATION OPERATION</color>\n\n" +
-                    "The Reef Seven monitoring buoy has gone silent. Restore its signal, " +
-                    "collect reliable evidence, and help the team choose a safe coral-restoration site.\n\n" +
-                    "<color=#F4FBFF><b>YOUR OBJECTIVES</b></color>\n" +
-                    "<color=#A9D7E8>01</color> Restore the monitoring buoy with the power cell\n" +
-                    "<color=#A9D7E8>02</color> Survey Coral Garden, Seagrass Crossing and Sandy Passage\n" +
-                    "<color=#A9D7E8>03</color> Scan wildlife, coral, hazards and remove rubbish\n" +
-                    "<color=#A9D7E8>04</color> Collect and analyse water samples from every site\n" +
-                    "<color=#A9D7E8>05</color> Recommend a restoration site and place the marker\n" +
-                    "<color=#A9D7E8>06</color> Submit the final survey report\n\n" +
-                    "<color=#F4FBFF><b>STARTING THE DIVE</b></color>\n" +
-                    "<color=#A9D7E8>[D]</color> Desktop keyboard and mouse    " +
-                    "<color=#A9D7E8>[V]</color> VR / Simulator    " +
-                    "<color=#A9D7E8>[ENTER]</color> Begin mission\n\n" +
-                    "<color=#91AFC0>Desktop: WASD move • Right-click look • E grab • Left-click scan\n" +
-                    "VR / Simulator: Space + mouse aim • G grab • Click activate</color>";
-                bodyText.fontSize = 22;
-                bodyText.color = new Color(0.88f, 0.95f, 0.98f);
-                bodyText.lineSpacing = 1.05f;
-                bodyText.alignment = TextAnchor.UpperLeft;
-                bodyText.horizontalOverflow = HorizontalWrapMode.Wrap;
-                bodyText.verticalOverflow = VerticalWrapMode.Overflow;
-
-                var bodyRect = bodyText.rectTransform;
-                bodyRect.anchoredPosition = new Vector2(0f, 45f);
-                bodyRect.sizeDelta = new Vector2(900f, 500f);
+                    "Welcome, diver. You are helping a conservation team select\n" +
+                    "a coral-restoration trial site.\n\n" +
+                    "<b>Your Mission:</b>\n" +
+                    "1) Pick up the SCANNER and BOTTLE from the console\n" +
+                    "2) Follow the path to the buoy — insert the power cell\n" +
+                    "3) Visit all 3 sites (Coral Garden, Seagrass Crossing, Sandy Passage)\n" +
+                    "   At each site:\n" +
+                    "   • SCAN the coral survey point (aim scanner + click/trigger)\n" +
+                    "   • SCAN the animal\n" +
+                    "   • COLLECT a water sample (bring bottle to sample zone + press E/trigger)\n" +
+                    "   • PICK UP rubbish (grab it)\n" +
+                    "   • SCAN any hazards (do NOT touch — just scan)\n" +
+                    "4) Return to station — place bottle in SAMPLE ANALYSER\n" +
+                    "5) Review the COMPARISON BOARD and recommend a site\n" +
+                    "6) Take the MARKER to the chosen site\n" +
+                    "7) Submit your report\n\n" +
+                    "<b>Controls:</b>\n" +
+                    "Desktop: WASD move | Right-click look | E grab | Left-click scanner\n" +
+                    "VR/Sim: Hold Space + mouse to aim | G grab | Click to activate\n\n" +
+                    "Press VR/Simulator or Desktop, then Start Mission.";
             }
-
-            if (titleText != null)
-            {
-                var titleRect = titleText.rectTransform;
-                titleRect.anchoredPosition = new Vector2(0f, 270f);
-                titleRect.sizeDelta = new Vector2(960f, 100f);
-            }
-
-            StyleBriefingPanel();
-            HideIntroButtons();
 
             if (briefingPanel != null)
                 briefingPanel.SetActive(true);
@@ -87,71 +65,6 @@ namespace ReefExplorer.UI
             Wire(creditsButton, () => MissionController.Instance?.ShowCredits());
             Wire(restartButton, () => MissionController.Instance?.RestartMission());
             Wire(quitButton, () => MissionController.Instance?.QuitApplication());
-        }
-
-        void Update()
-        {
-            if (MissionController.Instance == null ||
-                MissionController.Instance.State != MissionState.Briefing ||
-                Keyboard.current == null)
-                return;
-
-            if (Keyboard.current.dKey.wasPressedThisFrame)
-                modeSelector?.ChooseDesktop();
-            else if (Keyboard.current.vKey.wasPressedThisFrame)
-                modeSelector?.ChooseXr();
-            else if (Keyboard.current.enterKey.wasPressedThisFrame ||
-                     Keyboard.current.numpadEnterKey.wasPressedThisFrame)
-                MissionController.Instance.StartDive();
-        }
-
-        void HideIntroButtons()
-        {
-            startButton?.gameObject.SetActive(false);
-            xrButton?.gameObject.SetActive(false);
-            desktopButton?.gameObject.SetActive(false);
-            creditsButton?.gameObject.SetActive(false);
-            restartButton?.gameObject.SetActive(false);
-            quitButton?.gameObject.SetActive(false);
-        }
-
-        void StyleBriefingPanel()
-        {
-            if (briefingPanel == null)
-                return;
-
-            var image = briefingPanel.GetComponent<Image>();
-            if (image != null)
-                image.color = new Color(0.025f, 0.075f, 0.12f, 0.985f);
-
-            var outline = briefingPanel.GetComponent<Outline>();
-            if (outline == null)
-                outline = briefingPanel.AddComponent<Outline>();
-            outline.effectColor = new Color(0.18f, 0.78f, 0.84f, 0.7f);
-            outline.effectDistance = new Vector2(2f, -2f);
-
-            CreateAccent("TopAccent", new Vector2(0f, 326f), new Vector2(860f, 5f),
-                new Color(0.25f, 0.9f, 0.88f, 0.95f));
-            CreateAccent("SideAccent", new Vector2(-478f, 0f), new Vector2(5f, 570f),
-                new Color(0.2f, 0.64f, 0.78f, 0.75f));
-        }
-
-        void CreateAccent(string name, Vector2 position, Vector2 size, Color color)
-        {
-            if (briefingPanel.transform.Find(name) != null)
-                return;
-
-            var accent = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            accent.transform.SetParent(briefingPanel.transform, false);
-            accent.transform.SetAsFirstSibling();
-
-            var rect = accent.GetComponent<RectTransform>();
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-
-            var image = accent.GetComponent<Image>();
-            image.color = color;
-            image.raycastTarget = false;
         }
 
         void OnEnable()
