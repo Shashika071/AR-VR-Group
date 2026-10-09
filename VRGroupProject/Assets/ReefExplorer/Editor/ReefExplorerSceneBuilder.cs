@@ -108,7 +108,7 @@ namespace ReefExplorer.EditorTools
         {
             var clown = EnsureSpecies("Species_Clownfish", "clownfish", "Clownfish", new Color(1f, 0.55f, 0.1f));
             var turtle = EnsureSpecies("Species_SeaTurtle", "sea_turtle", "Sea Turtle", new Color(0.3f, 0.75f, 0.4f));
-            var ray = EnsureSpecies("Species_Ray", "ray", "Ray", new Color(0.45f, 0.55f, 0.7f));
+            var ray = EnsureSpecies("Species_Ray", "ray", "Starfish", new Color(0.95f, 0.45f, 0.15f));
 
             var baseline = AssetDatabase.LoadAssetAtPath<BaselineSurveyData>($"{DataFolder}/BaselineSurvey.asset");
             if (baseline == null)
@@ -131,7 +131,7 @@ namespace ReefExplorer.EditorTools
 
             var coralSite = EnsureSite("Site_Coral", "site_coral", "Coral Garden", "zone_coral", clown, "Stable rock and rubble", "Moderate — some bleaching on table corals", "Stable rock and rubble, minor loose fragments", "Fair — storm damage to branching corals, substrate intact", 3, false, true);
             var seagrassSite = EnsureSite("Site_Seagrass", "site_seagrass", "Seagrass Crossing", "zone_turtle", turtle, "Dense seagrass meadow", "Good — healthy seagrass bed", "Patchy seagrass", "Poor — anchor damage to seagrass bed", 2, true, false, "Toxic barrel", "Anchor damage has destabilized substrate, and toxic barrel is present.");
-            var sandSite = EnsureSite("Site_Sand", "site_sand", "Sandy Passage", "zone_ray", ray, "Flat sandy bottom", "Good — clear sand", "Flat sandy bottom", "Good — clear sand", 1, false, false, "", "Sand provides no hard substrate for coral to attach to.");
+            var sandSite = EnsureSite("Site_Sand", "site_sand", "Starfish Ledge", "zone_ray", ray, "Sloping rock ledge", "Fair — starfish cover the rock", "Sloping rock ledge", "Fair — starfish cover the rock", 1, false, false, "", "The ledge is steep and already covered by starfish, so a coral trial would disturb them.");
 
             return (new[] { clown, turtle, ray }, baseline, new[] { coralSite, seagrassSite, sandSite });
         }
@@ -189,7 +189,7 @@ namespace ReefExplorer.EditorTools
             {
                 "Clownfish" => "Clownfish live among anemones that protect them from predators.",
                 "Sea Turtle" => "Sea turtles migrate long distances and often return to nesting beaches.",
-                "Ray" => "Many rays glide just above sand, using fins like underwater wings.",
+                "Starfish" => "Starfish cling to the rocky ledge and should be left undisturbed.",
                 _ => $"{display} used for the educational reef survey."
             };
             so.FindProperty("accentColor").colorValue = color;
@@ -561,7 +561,7 @@ namespace ReefExplorer.EditorTools
             // Compact reef — short walks, zones stay in view of each other.
             CreateSurveyZone("Zone_Coral", "zone_coral", "CORAL GARDEN", new Vector3(-8f, 0f, 12f), mats, species[0], AnimalKind.Clown, sites[0]);
             CreateSurveyZone("Zone_Turtle", "zone_turtle", "SEAGRASS CROSSING", new Vector3(0f, 0f, 18f), mats, species[1], AnimalKind.Turtle, sites[1]);
-            CreateSurveyZone("Zone_Ray", "zone_ray", "SANDY PASSAGE", new Vector3(8f, 0f, 13f), mats, species[2], AnimalKind.Ray, sites[2]);
+            CreateSurveyZone("Zone_Ray", "zone_ray", "STARFISH LEDGE", new Vector3(8f, 0f, 13f), mats, species[2], AnimalKind.Ray, sites[2]);
         }
 
         enum AnimalKind { Clown, Turtle, Ray }

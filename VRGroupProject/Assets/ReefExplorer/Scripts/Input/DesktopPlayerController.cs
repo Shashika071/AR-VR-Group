@@ -30,6 +30,8 @@ namespace ReefExplorer.Input
         bool lookEnabled;
         Rigidbody heldBody;
         Transform heldTransform;
+
+        public Transform HeldObject => heldTransform;
         ScannerTool heldScanner;
         readonly Vector3 heldLocalOffset = new Vector3(0.28f, -0.18f, 0.45f);
         readonly Vector3 heldScale = new Vector3(0.65f, 0.65f, 0.65f);
@@ -217,17 +219,34 @@ namespace ReefExplorer.Input
             if (!pressedInteract)
                 return;
 
-            // Fill bottle if aiming at / standing in sample zone while holding bottle.
-            if (heldTransform != null &&
-                Physics.Raycast(cameraTransform.position, cameraTransform.forward, out var zoneHit, interactRange,
-                    ~0, QueryTriggerInteraction.Collide))
+            var heldBottle = heldTransform != null ? heldTransform.GetComponent<SampleBottle>() : null;
+            if (heldBottle != null)
             {
-                var zone = zoneHit.collider.GetComponentInParent<SampleZone>();
+                var zone = FindSampleZone();
                 if (zone != null)
                 {
-                    zone.TryFill();
+                    zone.BeginSample(heldBottle);
                     return;
                 }
+            }
+
+            if (heldTransform != null && heldTransform.GetComponent<PowerCell>() != null)
+            {
+                PlaceHeldInFront();
+                return;
+            }
+
+            if (heldTransform != null && heldTransform.GetComponent<VehiclePowerPack>() != null)
+            {
+                if (TrySetOnVehicle(heldTransform))
+                {
+                    ReleaseHoldKeepPlaced();
+                    MissionEvents.RaiseFeedback("Dive vehicle started.");
+                    return;
+                }
+
+                MissionEvents.RaiseFeedback("Stand by the dive vehicle and press E to set the battery on it.");
+                return;
             }
 
             if (heldTransform != null)
@@ -334,6 +353,11 @@ namespace ReefExplorer.Input
         {
             heldBody = body;
             heldTransform = body.transform;
+            if (heldTransform.GetComponent<VehiclePowerPack>() != null)
+            {
+                heldTransform.SetParent(null, true);
+                VehiclePowerPack.ShowVehicleHint(true);
+            }
             heldOriginalScale = heldTransform.localScale;
             // Smaller in first-person view so tools don't fill the whole screen.
             if (heldTransform.GetComponent<ScannerTool>() != null ||
@@ -364,7 +388,137 @@ namespace ReefExplorer.Input
                 MissionController.Instance.NotifyTutorialStep("grab");
             }
 
-            MissionEvents.RaiseFeedback($"Picked up {heldTransform.name}. Press Q to drop.");
+            if (cell == null && heldTransform.GetComponent<VehiclePowerPack>() == null)
+                MissionEvents.RaiseFeedback($"Picked up {heldTransform.name}. Press Q to drop.");
+            else if (cell == null)
+                MissionEvents.RaiseFeedback("Craft battery. Press E at the dive vehicle to set it on the craft.");
+        }
+
+        bool TrySetOnVehicle(Transform pack)
+        {
+            var craft = GameObject.Find("StationDiveCraft");
+            if (craft == null || pack == null)
+                return false;
+
+            var origin = cameraTransform != null ? cameraTransform.position : transform.position;
+            if (Vector3.Distance(origin, craft.transform.position) > 4.5f)
+                return false;
+
+            var slot = craft.transform.Find("VehicleBatterySlot_1");
+            if (slot == null)
+                return false;
+
+            pack.SetParent(slot, false);
+            pack.localPosition = Vector3.zero;
+            pack.localRotation = Quaternion.identity;
+            pack.gameObject.SetActive(false);
+            VehiclePowerPack.MarkInstalled();
+            VehiclePowerPack.ShowVehicleHint(false);
+            VehiclePowerPack.PlayStart(craft.transform.position);
+            return true;
+        }
+
+        void ReleaseHoldKeepPlaced()
+        {
+            if (heldBody != null)
+            {
+                heldBody.detectCollisions = true;
+                RigidbodyUtil.ParkKinematic(heldBody);
+            }
+
+            heldBody = null;
+            heldTransform = null;
+            heldScanner = null;
+        }
+
+        void PlaceHeldInFront()
+        {
+            if (heldTransform == null || cameraTransform == null)
+                return;
+
+            var dropPos = cameraTransform.position + cameraTransform.forward * 1.1f;
+            if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out var hit, 6f,
+                    ~0, QueryTriggerInteraction.Ignore))
+                dropPos = hit.point + hit.normal * 0.12f;
+            dropPos.y = Mathf.Max(dropPos.y, 0.12f);
+
+            heldTransform.GetComponent<PowerCell>()?.MarkHeldDesktop(false);
+            if (heldBody != null)
+            {
+                heldBody.detectCollisions = true;
+                RigidbodyUtil.ParkKinematic(heldBody);
+            }
+
+            heldTransform.SetPositionAndRotation(dropPos, Quaternion.identity);
+            heldBody = null;
+            heldTransform = null;
+            heldScanner = null;
+        }
+
+        SampleZone FindSampleZone()
+        {
+            if (cameraTransform != null &&
+                Physics.Raycast(cameraTransform.position, cameraTransform.forward, out var hit, interactRange,
+                    ~0, QueryTriggerInteraction.Collide))
+            {
+                var aimed = hit.collider.GetComponentInParent<SampleZone>();
+                if (aimed != null)
+                    return aimed;
+            }
+
+            var zones = FindObjectsByType<SampleZone>(FindObjectsSortMode.None);
+            SampleZone best = null;
+            var bestDist = 2.6f;
+            var origin = transform.position;
+            foreach (var zone in zones)
+            {
+                if (zone == null)
+                    continue;
+                var dist = Vector3.Distance(origin, zone.transform.position);
+                if (dist <= bestDist)
+                {
+                    bestDist = dist;
+                    best = zone;
+                }
+            }
+
+            return best;
+        }
+
+        BuoyPowerSocket FindNearbyBuoySocket(float radius)
+        {
+            var sockets = FindObjectsByType<BuoyPowerSocket>(FindObjectsSortMode.None);
+            BuoyPowerSocket best = null;
+            var bestDist = radius;
+            var origin = cameraTransform != null ? cameraTransform.position : transform.position;
+            foreach (var socket in sockets)
+            {
+                if (socket == null)
+                    continue;
+                var dist = Vector3.Distance(origin, socket.transform.position);
+                if (dist <= bestDist)
+                {
+                    bestDist = dist;
+                    best = socket;
+                }
+            }
+
+            return best;
+        }
+
+        void ReleaseHold()
+        {
+            if (heldTransform != null)
+                heldTransform.GetComponent<PowerCell>()?.MarkHeldDesktop(false);
+            if (heldBody != null)
+            {
+                heldBody.detectCollisions = true;
+                RigidbodyUtil.ParkKinematic(heldBody);
+            }
+
+            heldBody = null;
+            heldTransform = null;
+            heldScanner = null;
         }
 
         void DropHeld()
@@ -378,6 +532,8 @@ namespace ReefExplorer.Input
             {
                 heldTransform.localScale = heldOriginalScale;
                 heldTransform.GetComponent<PowerCell>()?.MarkHeldDesktop(false);
+                if (heldTransform.GetComponent<VehiclePowerPack>() != null)
+                    VehiclePowerPack.ShowVehicleHint(false);
             }
 
             // If near the station table, put the item on the table. Otherwise normal drop.

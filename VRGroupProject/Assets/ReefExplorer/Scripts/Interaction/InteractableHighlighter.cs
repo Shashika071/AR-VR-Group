@@ -47,7 +47,7 @@ namespace ReefExplorer.Interaction
             foreach (var cp in FindObjectsByType<CoralSurveyPoint>(FindObjectsSortMode.None))
             {
                 AddPulseGlow(cp.gameObject, CoralColor, 0.8f);
-                AddLabel(cp.transform, "SCAN CORAL\n(Aim scanner + click)", 0.6f, CoralColor);
+                AddBeacon(cp.transform, BeaconShape.Crystal, CoralColor, 0.55f);
             }
         }
 
@@ -65,7 +65,7 @@ namespace ReefExplorer.Interaction
                 if (col != null) Destroy(col);
                 SetColor(indicator, new Color(SampleColor.r, SampleColor.g, SampleColor.b, 0.4f));
                 AddPulseGlow(indicator, SampleColor, 0.5f);
-                AddLabel(sz.transform, "WATER SAMPLE\n(Bring bottle + press E)", 1.4f, SampleColor);
+                AddBeacon(sz.transform, BeaconShape.Drop, SampleColor, 0.7f);
             }
         }
 
@@ -74,7 +74,7 @@ namespace ReefExplorer.Interaction
             foreach (var ri in FindObjectsByType<RubbishItem>(FindObjectsSortMode.None))
             {
                 AddPulseGlow(ri.gameObject, RubbishColor, 0.4f);
-                AddLabel(ri.transform, "RUBBISH\n(Grab to collect)", 0.35f, RubbishColor);
+                AddBeacon(ri.transform, BeaconShape.Ring, RubbishColor, 0.28f);
             }
         }
 
@@ -83,7 +83,7 @@ namespace ReefExplorer.Interaction
             foreach (var hf in FindObjectsByType<HazardFlag>(FindObjectsSortMode.None))
             {
                 AddPulseGlow(hf.gameObject, HazardColor, 1.2f);
-                AddLabel(hf.transform, "⚠ HAZARD ⚠\n(Scan — do NOT touch)", 1.0f, HazardColor);
+                AddBeacon(hf.transform, BeaconShape.Ring, new Color(0.35f, 0.95f, 0.3f), 0.9f);
             }
         }
 
@@ -92,7 +92,7 @@ namespace ReefExplorer.Interaction
             foreach (var mh in FindObjectsByType<MarkerHolder>(FindObjectsSortMode.None))
             {
                 AddPulseGlow(mh.gameObject, MarkerColor, 0.5f);
-                AddLabel(mh.transform, "MARKER SLOT\n(Place marker here)", 0.6f, MarkerColor);
+                AddBeacon(mh.transform, BeaconShape.Ring, MarkerColor, 0.45f);
             }
         }
 
@@ -101,7 +101,7 @@ namespace ReefExplorer.Interaction
             foreach (var rm in FindObjectsByType<RecommendationMarker>(FindObjectsSortMode.None))
             {
                 AddPulseGlow(rm.gameObject, MarkerColor, 0.6f);
-                AddLabel(rm.transform, "RESEARCH MARKER\n(Grab after choosing site)", 0.55f, MarkerColor);
+                AddBeacon(rm.transform, BeaconShape.Crystal, MarkerColor, 0.4f);
             }
         }
 
@@ -110,7 +110,7 @@ namespace ReefExplorer.Interaction
             foreach (var sa in FindObjectsByType<SampleAnalyser>(FindObjectsSortMode.None))
             {
                 AddPulseGlow(sa.gameObject, SampleColor, 0.6f);
-                AddLabel(sa.transform, "SAMPLE ANALYSER\n(Place bottle here)", 0.5f, SampleColor);
+                AddBeacon(sa.transform, BeaconShape.Drop, SampleColor, 0.45f);
             }
         }
 
@@ -120,7 +120,7 @@ namespace ReefExplorer.Interaction
             if (buoy != null)
             {
                 AddPulseGlow(buoy, BuoyColor, 2f);
-                AddLabel(buoy.transform, "MONITORING BUOY\n(Insert power cell)", 4f, BuoyColor);
+                AddBeacon(buoy.transform, BeaconShape.Ring, BuoyColor, 2.2f);
             }
         }
 
@@ -133,21 +133,43 @@ namespace ReefExplorer.Interaction
             glow.radius = radius;
         }
 
-        static void AddLabel(Transform parent, string text, float height, Color color)
-        {
-            var labelGo = new GameObject("InteractLabel");
-            labelGo.transform.SetParent(parent, false);
-            labelGo.transform.localPosition = new Vector3(0f, height, 0f);
+        enum BeaconShape { Crystal, Drop, Ring }
 
-            var mesh = labelGo.AddComponent<TextMesh>();
-            mesh.text = text;
-            mesh.characterSize = 0.04f;
-            mesh.fontSize = 24;
-            mesh.anchor = TextAnchor.MiddleCenter;
-            mesh.alignment = TextAlignment.Center;
-            mesh.color = color;
-            mesh.fontStyle = FontStyle.Bold;
-            labelGo.AddComponent<BillboardLabel>();
+        static void AddBeacon(Transform parent, BeaconShape shape, Color color, float height)
+        {
+            if (parent.Find("SeeBeacon") != null)
+                return;
+
+            var beacon = GameObject.CreatePrimitive(shape switch
+            {
+                BeaconShape.Drop => PrimitiveType.Sphere,
+                BeaconShape.Ring => PrimitiveType.Cylinder,
+                _ => PrimitiveType.Cube
+            });
+            beacon.name = "SeeBeacon";
+            beacon.transform.SetParent(parent, false);
+            beacon.transform.localPosition = new Vector3(0f, height, 0f);
+            var col = beacon.GetComponent<Collider>();
+            if (col != null)
+                Destroy(col);
+
+            if (shape == BeaconShape.Crystal)
+            {
+                beacon.transform.localScale = new Vector3(0.12f, 0.22f, 0.12f);
+                beacon.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
+            }
+            else if (shape == BeaconShape.Drop)
+            {
+                beacon.transform.localScale = Vector3.one * 0.16f;
+            }
+            else
+            {
+                beacon.transform.localScale = new Vector3(0.55f, 0.02f, 0.55f);
+                beacon.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+            }
+
+            SetColor(beacon, new Color(color.r, color.g, color.b, 0.85f));
+            beacon.AddComponent<BeaconBob>();
         }
 
         static void SetColor(GameObject go, Color color)
@@ -214,32 +236,32 @@ namespace ReefExplorer.Interaction
             if (completed && !wasCompleted)
             {
                 wasCompleted = true;
-                // Change to green "done" glow
-                pointLight.color = Color.green;
-                baseIntensity = 0.3f;
+                pointLight.color = new Color(0.45f, 1f, 0.55f);
+                baseIntensity = 0.25f;
 
-                // Add a checkmark label
-                var check = new GameObject("Checkmark");
-                check.transform.SetParent(transform, false);
-                check.transform.localPosition = new Vector3(0f, 0.4f, 0f);
-                var mesh = check.AddComponent<TextMesh>();
-                mesh.text = "✓ DONE";
-                mesh.characterSize = 0.05f;
-                mesh.fontSize = 28;
-                mesh.anchor = TextAnchor.MiddleCenter;
-                mesh.alignment = TextAlignment.Center;
-                mesh.color = Color.green;
-                mesh.fontStyle = FontStyle.Bold;
-                check.AddComponent<BillboardLabel>();
-
-                // Hide the instruction label
-                var label = transform.Find("InteractLabel");
-                if (label != null) label.gameObject.SetActive(false);
+                var beacon = transform.Find("SeeBeacon");
+                if (beacon != null)
+                    beacon.gameObject.SetActive(false);
             }
 
             // Pulse the light
             float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 3f);
             pointLight.intensity = baseIntensity * (0.6f + 0.4f * pulse);
+        }
+    }
+
+    /// <summary>Slow hover so a beacon reads as a sign, not a piece of the object.</summary>
+    public sealed class BeaconBob : MonoBehaviour
+    {
+        Vector3 origin;
+
+        void Start() => origin = transform.localPosition;
+
+        void Update()
+        {
+            var p = origin;
+            p.y += Mathf.Sin(Time.time * 2.2f + origin.x) * 0.06f;
+            transform.localPosition = p;
         }
     }
 }

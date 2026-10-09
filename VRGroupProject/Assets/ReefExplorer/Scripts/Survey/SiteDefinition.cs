@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ReefExplorer.Survey
 {
     /// <summary>
-    /// Configurable data for one survey site (Coral Garden / Seagrass Crossing / Sandy Passage).
+    /// Configurable data for one survey site (Coral Garden / Seagrass Crossing / Starfish Ledge).
     /// Used by the comparison board and recommendation system.
     /// All readings are preset simulated data — not random.
     /// </summary>

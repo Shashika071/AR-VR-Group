@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: Site_Sand
   m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SiteDefinition
   siteId: site_sand
-  displayName: Sandy Passage
+  displayName: Starfish Ledge
   zoneId: zone_ray
-  description: A patch of branching coral colonies on a rocky substrate.
-  baselineCoralCondition: "Good \u2014 clear sand"
-  baselineSubstrate: Flat sandy bottom
-  currentCoralCondition: "Good \u2014 clear sand"
-  currentSubstrate: Flat sandy bottom
+  description: A rocky ledge crowded with starfish.
+  baselineCoralCondition: "Fair \u2014 starfish cover the rock"
+  baselineSubstrate: Sloping rock ledge
+  currentCoralCondition: "Fair \u2014 starfish cover the rock"
+  currentSubstrate: Sloping rock ledge
   waterReadings:
     waterClarity: Moderate
     temperatureCelsius: 26.5
@@ -35,7 +35,7 @@ MonoBehaviour:
   hazardBlocksRestoration: 0
   suitableForRestoration: 0
   suitabilityReason: Suitable readings, stable substrate and manageable small debris.
-  unsuitableReason: Sand provides no hard substrate for coral to attach to.
+  unsuitableReason: The ledge is steep and already covered by starfish, so a coral trial would disturb them.
   suitabilityScore: 80
   targetAnimal: {fileID: 11400000, guid: f63ef7ae7f4acda4d93b60240b8ca6b4, type: 2}
   animalObservationNote: Clownfish sheltering in surviving anemones.

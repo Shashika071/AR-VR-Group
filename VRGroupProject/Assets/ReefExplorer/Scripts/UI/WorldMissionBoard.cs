@@ -34,7 +34,7 @@ namespace ReefExplorer.UI
                     "<b>Your Mission:</b>\n" +
                     "1) Pick up the SCANNER and BOTTLE from the console\n" +
                     "2) Follow the path to the buoy — insert the power cell\n" +
-                    "3) Visit all 3 sites (Coral Garden, Seagrass Crossing, Sandy Passage)\n" +
+                    "3) Visit all 3 sites (Coral Garden, Seagrass Crossing, Starfish Ledge)\n" +
                     "   At each site:\n" +
                     "   • SCAN the coral survey point (aim scanner + click/trigger)\n" +
                     "   • SCAN the animal\n" +

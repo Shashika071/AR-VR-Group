@@ -43,12 +43,20 @@ namespace ReefExplorer.UI
         void OnEnable() => MissionEvents.StateChanged += OnState;
         void OnDisable() => MissionEvents.StateChanged -= OnState;
 
+        public void RefreshPauseVisual()
+        {
+            if (MissionController.Instance == null)
+                return;
+            OnState(MissionController.Instance.State, MissionController.Instance.State);
+        }
+
         void OnState(MissionState _, MissionState next)
         {
+            var showMenu = next == MissionState.Paused && !ReefMinimap.ShowingBigMap;
             if (panel != null)
-                panel.SetActive(next == MissionState.Paused);
+                panel.SetActive(showMenu);
             if (backdrop != null)
-                backdrop.gameObject.SetActive(next == MissionState.Paused);
+                backdrop.gameObject.SetActive(showMenu);
 
             if (next == MissionState.Paused)
             {
