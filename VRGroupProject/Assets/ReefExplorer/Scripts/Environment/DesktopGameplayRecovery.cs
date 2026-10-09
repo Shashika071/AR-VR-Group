@@ -22,19 +22,13 @@ namespace ReefExplorer.Environment
             host.AddComponent<DesktopGameplayRecovery>();
         }
 
-        void Start()
-        {
-            Recover();
-        }
-
         void Update()
         {
-            // Hotkey: press R to reset view/controls if stuck.
-            if (UnityEngine.InputSystem.Keyboard.current != null &&
-                UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame)
-            {
-                Recover();
-            }
+            // XR / Device Simulator owns R (translate vs rotate). Never reset the player in that mode,
+            // or the demo snaps back to the desktop camera and hides the XR Origin.
+            if (MissionController.Instance != null &&
+                MissionController.Instance.PlayMode == PlayModeType.XR)
+                return;
 
             var desktop = GameObject.Find("DesktopPlayer");
             if (desktop == null)

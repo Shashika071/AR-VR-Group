@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7f1324f52ac09f42a7cb3d4672a703c, type: 3}
+  m_Name: Site_Sand
+  m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Survey.SiteDefinition
+  siteId: site_sand
+  displayName: Starfish Ledge
+  zoneId: zone_ray
+  description: A rocky ledge crowded with starfish.
+  baselineCoralCondition: "Fair \u2014 starfish cover the rock"
+  baselineSubstrate: Sloping rock ledge
+  currentCoralCondition: "Fair \u2014 starfish cover the rock"
+  currentSubstrate: Sloping rock ledge
+  waterReadings:
+    waterClarity: Moderate
+    temperatureCelsius: 26.5
+    temperatureSuitability: "Suitable (25-29 \xB0C range)"
+    pH: 8.1
+    currentStrength: Moderate
+    summary: Simulated readings for this educational mission.
+  initialRubbishCount: 1
+  rubbishDescription: Plastic bottles and a food container near the reef edge.
+  hasHazard: 0
+  hazardType: 
+  hazardDescription: 
+  hazardBlocksRestoration: 0
+  suitableForRestoration: 0
+  suitabilityReason: Suitable readings, stable substrate and manageable small debris.
+  unsuitableReason: The ledge is steep and already covered by starfish, so a coral trial would disturb them.
+  suitabilityScore: 80
+  targetAnimal: {fileID: 11400000, guid: f63ef7ae7f4acda4d93b60240b8ca6b4, type: 2}
+  animalObservationNote: Clownfish sheltering in surviving anemones.

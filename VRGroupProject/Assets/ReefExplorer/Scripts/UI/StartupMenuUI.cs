@@ -63,6 +63,43 @@ namespace ReefExplorer.UI
                 hudRoot.SetActive(false);
         }
 
+        GameObject simulatorHintRoot;
+        Text simulatorHintText;
+
+        void BuildSimulatorHint()
+        {
+            if (simulatorHintRoot != null)
+                return;
+
+            var canvasGo = new GameObject("XrSimulatorHintCanvas");
+            canvasGo.transform.SetParent(transform, false);
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 500;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            canvasGo.AddComponent<GraphicRaycaster>();
+
+            simulatorHintRoot = CreatePanel(canvasGo.transform, "XrHint", new Vector2(1100f, 64f),
+                new Color(0.02f, 0.1f, 0.16f, 0.92f));
+            var hintRt = simulatorHintRoot.GetComponent<RectTransform>();
+            hintRt.anchorMin = new Vector2(0.5f, 0f);
+            hintRt.anchorMax = new Vector2(0.5f, 0f);
+            hintRt.pivot = new Vector2(0.5f, 0f);
+            hintRt.anchoredPosition = new Vector2(0f, 16f);
+            simulatorHintText = CreateLabel(simulatorHintRoot.transform, "HintText",
+                "Press V to show XR Origin + Device Simulator", 20, Vector2.zero, new Vector2(1060f, 56f));
+        }
+
+        void SetSimulatorHint(string text, bool visible)
+        {
+            if (simulatorHintRoot != null)
+                simulatorHintRoot.SetActive(visible);
+            if (simulatorHintText != null && visible)
+                simulatorHintText.text = text;
+        }
+
         void OnDestroy()
         {
             MissionEvents.StateChanged -= OnStateChanged;
@@ -94,6 +131,7 @@ namespace ReefExplorer.UI
             }
 
             diveStarted = true;
+            SetSimulatorHint(string.Empty, false);
 
             if (Keyboard.current.hKey.wasPressedThisFrame && hudRoot != null)
                 hudRoot.SetActive(!hudRoot.activeSelf);
@@ -112,6 +150,7 @@ namespace ReefExplorer.UI
             }
 
             diveStarted = true;
+            SetSimulatorHint(string.Empty, false);
             HideMenuShowHud();
         }
 
@@ -122,6 +161,7 @@ namespace ReefExplorer.UI
                 panelRoot.SetActive(false);
             if (hudRoot != null)
                 hudRoot.SetActive(false);
+            SetSimulatorHint(string.Empty, false);
         }
 
         void OnObjective(string text)
@@ -200,6 +240,7 @@ namespace ReefExplorer.UI
             modeSelector ??= FindAnyObjectByType<PlayerModeSelector>();
             modeSelector?.ChooseXr();
             SetStatus("VR selected. Now click Start Dive or press Enter.");
+            SetSimulatorHint(string.Empty, false);
         }
 
         void StartDive()

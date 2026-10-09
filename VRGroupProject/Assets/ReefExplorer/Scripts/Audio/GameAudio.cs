@@ -19,5 +19,10 @@ namespace ReefExplorer.Audio
         public static void PlaySampleFill(Vector3 position) => hub?.Play(GameAudioHub.Cue.SampleFill, position);
         public static void PlayObjectiveComplete(Vector3 position) => hub?.Play(GameAudioHub.Cue.ObjectiveComplete, position);
         public static void PlayMissionSuccess() => hub?.Play(GameAudioHub.Cue.MissionSuccess, Vector3.zero, false);
+        public static void PlayRepairComplete(Vector3 position) => hub?.Play(GameAudioHub.Cue.ObjectiveComplete, position);
+        public static void PlayRubbishCollect(Vector3 position) => hub?.Play(GameAudioHub.Cue.SampleFill, position);
+        public static void PlayAnalyserAccept(Vector3 position) => hub?.Play(GameAudioHub.Cue.ObjectiveComplete, position);
+        public static void PlayMarkerPlace(Vector3 position) => hub?.Play(GameAudioHub.Cue.ObjectiveComplete, position);
+        public static void PlayHazardFlag(Vector3 position) => hub?.Play(GameAudioHub.Cue.ScannerSuccess, position);
     }
 }

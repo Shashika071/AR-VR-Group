@@ -39,14 +39,22 @@ namespace ReefExplorer.Interaction
         void OnGrab(SelectEnterEventArgs _)
         {
             IsHeld = true;
-            MissionEvents.RaiseFeedback("Power cell secured. Carry it to the buoy socket.");
+            BuoyPowerSocket.ShowPlaceHint(true);
+            MissionEvents.RaiseFeedback("Buoy battery picked up.");
         }
 
         void OnDrop(SelectExitEventArgs _)
         {
             IsHeld = false;
+            BuoyPowerSocket.ShowPlaceHint(false);
         }
 
-        public void MarkHeldDesktop(bool held) => IsHeld = held;
+        public void MarkHeldDesktop(bool held)
+        {
+            IsHeld = held;
+            BuoyPowerSocket.ShowPlaceHint(held);
+            if (held)
+                MissionEvents.RaiseFeedback("Buoy battery picked up.");
+        }
     }
 }

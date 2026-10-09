@@ -41,7 +41,7 @@ namespace ReefExplorer.EditorTools
 
             ProceduralAudioFactory.EnsureAllClips();
             EnsureFolders();
-            var species = EnsureSpeciesAndBaseline(out var baseline);
+            var (species, baseline, sites) = EnsureSpeciesAndBaseline();
             var mats = EnsureMaterials();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -55,12 +55,12 @@ namespace ReefExplorer.EditorTools
             RenderSettings.ambientLight = new Color(0.03f, 0.11f, 0.15f);
 
             CreateLight();
-            var systems = CreateSystems(species, baseline);
+            var systems = CreateSystems(species, baseline, sites);
             var station = CreateStation(mats);
             // Marker so runtime spreader does not re-scatter props into old cube style.
             new GameObject("ReefVisuals_v2");
             CreateSeabed(mats);
-            CreateZonesAndAnimals(mats, species);
+            CreateZonesAndAnimals(mats, species, sites);
             CreateMonitoringBuoy(mats);
             CreateTools(mats, station);
             CreateTutorialProps(mats);
@@ -104,32 +104,65 @@ namespace ReefExplorer.EditorTools
             Directory.CreateDirectory("Assets/ReefExplorer/Prefabs");
         }
 
-        static SpeciesDefinition[] EnsureSpeciesAndBaseline(out BaselineSurveyData baseline)
+        static (SpeciesDefinition[], BaselineSurveyData, SiteDefinition[]) EnsureSpeciesAndBaseline()
         {
             var clown = EnsureSpecies("Species_Clownfish", "clownfish", "Clownfish", new Color(1f, 0.55f, 0.1f));
             var turtle = EnsureSpecies("Species_SeaTurtle", "sea_turtle", "Sea Turtle", new Color(0.3f, 0.75f, 0.4f));
-            var ray = EnsureSpecies("Species_Ray", "ray", "Ray", new Color(0.45f, 0.55f, 0.7f));
+            var ray = EnsureSpecies("Species_Ray", "ray", "Starfish", new Color(0.95f, 0.45f, 0.15f));
 
-            baseline = AssetDatabase.LoadAssetAtPath<BaselineSurveyData>($"{DataFolder}/BaselineSurvey.asset");
+            var baseline = AssetDatabase.LoadAssetAtPath<BaselineSurveyData>($"{DataFolder}/BaselineSurvey.asset");
             if (baseline == null)
             {
                 baseline = ScriptableObject.CreateInstance<BaselineSurveyData>();
                 AssetDatabase.CreateAsset(baseline, $"{DataFolder}/BaselineSurvey.asset");
             }
 
-            var so = new SerializedObject(baseline);
-            so.FindProperty("surveyLabel").stringValue = "Previous simulated survey (educational)";
-            so.FindProperty("disclaimer").stringValue =
+            var bso = new SerializedObject(baseline);
+            bso.FindProperty("surveyLabel").stringValue = "Previous simulated survey (educational)";
+            bso.FindProperty("disclaimer").stringValue =
                 "Simulated educational data only. Do not treat this as a real reef-health assessment.";
-            var entries = so.FindProperty("entries");
+            var entries = bso.FindProperty("entries");
             entries.arraySize = 3;
             SetEntry(entries.GetArrayElementAtIndex(0), clown, "zone_coral", 2);
             SetEntry(entries.GetArrayElementAtIndex(1), turtle, "zone_turtle", 1);
             SetEntry(entries.GetArrayElementAtIndex(2), ray, "zone_ray", 1);
-            so.ApplyModifiedPropertiesWithoutUndo();
+            bso.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(baseline);
 
-            return new[] { clown, turtle, ray };
+            var coralSite = EnsureSite("Site_Coral", "site_coral", "Coral Garden", "zone_coral", clown, "Stable rock and rubble", "Moderate — some bleaching on table corals", "Stable rock and rubble, minor loose fragments", "Fair — storm damage to branching corals, substrate intact", 3, false, true);
+            var seagrassSite = EnsureSite("Site_Seagrass", "site_seagrass", "Seagrass Crossing", "zone_turtle", turtle, "Dense seagrass meadow", "Good — healthy seagrass bed", "Patchy seagrass", "Poor — anchor damage to seagrass bed", 2, true, false, "Toxic barrel", "Anchor damage has destabilized substrate, and toxic barrel is present.");
+            var sandSite = EnsureSite("Site_Sand", "site_sand", "Starfish Ledge", "zone_ray", ray, "Sloping rock ledge", "Fair — starfish cover the rock", "Sloping rock ledge", "Fair — starfish cover the rock", 1, false, false, "", "The ledge is steep and already covered by starfish, so a coral trial would disturb them.");
+
+            return (new[] { clown, turtle, ray }, baseline, new[] { coralSite, seagrassSite, sandSite });
+        }
+
+        static SiteDefinition EnsureSite(string assetName, string id, string display, string zone, SpeciesDefinition targetAnimal, string baseSub, string baseCor, string curSub, string curCor, int rub, bool hazard, bool suitable, string hazardType = "", string unsuitableReason = "")
+        {
+            var path = $"{DataFolder}/{assetName}.asset";
+            var asset = AssetDatabase.LoadAssetAtPath<SiteDefinition>(path);
+            if (asset == null)
+            {
+                asset = ScriptableObject.CreateInstance<SiteDefinition>();
+                AssetDatabase.CreateAsset(asset, path);
+            }
+
+            var so = new SerializedObject(asset);
+            so.FindProperty("siteId").stringValue = id;
+            so.FindProperty("displayName").stringValue = display;
+            so.FindProperty("zoneId").stringValue = zone;
+            so.FindProperty("baselineSubstrate").stringValue = baseSub;
+            so.FindProperty("baselineCoralCondition").stringValue = baseCor;
+            so.FindProperty("currentSubstrate").stringValue = curSub;
+            so.FindProperty("currentCoralCondition").stringValue = curCor;
+            so.FindProperty("initialRubbishCount").intValue = rub;
+            so.FindProperty("hasHazard").boolValue = hazard;
+            so.FindProperty("hazardType").stringValue = hazardType;
+            so.FindProperty("suitableForRestoration").boolValue = suitable;
+            so.FindProperty("unsuitableReason").stringValue = unsuitableReason;
+            so.FindProperty("targetAnimal").objectReferenceValue = targetAnimal;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(asset);
+            return asset;
         }
 
         static void SetEntry(SerializedProperty prop, SpeciesDefinition species, string zone, int count)
@@ -156,7 +189,7 @@ namespace ReefExplorer.EditorTools
             {
                 "Clownfish" => "Clownfish live among anemones that protect them from predators.",
                 "Sea Turtle" => "Sea turtles migrate long distances and often return to nesting beaches.",
-                "Ray" => "Many rays glide just above sand, using fins like underwater wings.",
+                "Starfish" => "Starfish cling to the rocky ledge and should be left undisturbed.",
                 _ => $"{display} used for the educational reef survey."
             };
             so.FindProperty("accentColor").colorValue = color;
@@ -235,7 +268,7 @@ namespace ReefExplorer.EditorTools
             public GameAudioHub audioHub;
         }
 
-        static Systems CreateSystems(SpeciesDefinition[] species, BaselineSurveyData baseline)
+        static Systems CreateSystems(SpeciesDefinition[] species, BaselineSurveyData baseline, SiteDefinition[] sites)
         {
             var root = new GameObject("ReefExplorer_Systems");
             var mission = root.AddComponent<MissionController>();
@@ -245,6 +278,12 @@ namespace ReefExplorer.EditorTools
             req.arraySize = species.Length;
             for (var i = 0; i < species.Length; i++)
                 req.GetArrayElementAtIndex(i).objectReferenceValue = species[i];
+            
+            var reqSites = so.FindProperty("sites");
+            reqSites.arraySize = sites.Length;
+            for (var i = 0; i < sites.Length; i++)
+                reqSites.GetArrayElementAtIndex(i).objectReferenceValue = sites[i];
+                
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var mode = root.AddComponent<PlayerModeSelector>();
@@ -309,10 +348,24 @@ namespace ReefExplorer.EditorTools
             var board = CreateCube("MissionBoard", station.transform, new Vector3(0f, 1.75f, -3.05f), new Vector3(2.8f, 1.7f, 0.04f), mats.waterPanel);
             board.AddComponent<WorldMissionBoard>();
 
-            var holder = CreateCube("BottleHolder", station.transform, new Vector3(1.35f, 1.1f, -1.75f), new Vector3(0.28f, 0.28f, 0.28f), mats.accent);
+            var holder = CreateCube("SampleAnalyser", station.transform, new Vector3(1.35f, 1.1f, -1.75f), new Vector3(0.35f, 0.28f, 0.35f), mats.accent);
             holder.AddComponent<BottleSocket>();
             var socketInteractor = holder.AddComponent<XRSocketInteractor>();
             socketInteractor.socketActive = true;
+            holder.AddComponent<SampleAnalyser>();
+            
+            var analyserLabel = CreateWorldText(station.transform, "SAMPLE ANALYSER", 0.06f, TextAnchor.LowerCenter);
+            analyserLabel.position = new Vector3(1.35f, 1.3f, -1.75f);
+            
+            // Marker
+            var marker = CreateCube("RecommendationMarker", station.transform, new Vector3(0.8f, 1.15f, -1.75f), new Vector3(0.15f, 0.4f, 0.15f), mats.accent);
+            var mBody = marker.AddComponent<Rigidbody>();
+            ConfigureGrabBody(mBody);
+            mBody.isKinematic = true;
+            var mGrab = marker.AddComponent<XRGrabInteractable>();
+            mGrab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+            marker.AddComponent<RecommendationMarker>();
+            marker.AddComponent<ToolRespawn>();
 
             var stationZone = CreateTrigger("StationZone", station.transform, new Vector3(0f, 1f, 0f), new Vector3(8f, 3f, 8f));
             var zone = stationZone.AddComponent<ZoneTrigger>();
@@ -374,6 +427,10 @@ namespace ReefExplorer.EditorTools
             // Ambient fish from Assets/New_fish (not scan targets). Fake stylized fish removed.
             var newFishPaths = new[]
             {
+                "Assets/Fish/[FBX] Undualte_Triggerfish/Undualte_Triggerfish.FBX",
+                "Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas taeniolatus.FBX",
+                "Assets/Fish/Butterfly/Butterfly.FBX",
+                "Assets/Fish/Anthias1/Anthias1.FBX",
                 "Assets/New_fish/Angelfish.obj",
                 "Assets/New_fish/Betta_Fish.obj",
                 "Assets/New_fish/Undualte_Triggerfish.FBX",
@@ -391,7 +448,8 @@ namespace ReefExplorer.EditorTools
                 var fish = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
                 if (fish == null)
                     fish = Object.Instantiate(prefab);
-                fish.name = $"ScenicFish_{i}";
+                var packFish = IsSideNoseFish(path);
+                fish.name = packFish ? $"PackFish_{i}" : $"ScenicFish_{i}";
                 fish.transform.SetParent(reefRoot.transform);
                 fish.transform.position = pos;
                 foreach (var col in fish.GetComponentsInChildren<Collider>(true))
@@ -410,13 +468,17 @@ namespace ReefExplorer.EditorTools
                         fish.transform.localScale = Vector3.one * Mathf.Clamp(0.4f / cur, 0.01f, 8f);
                 }
 
-                fish.transform.rotation = Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
+                fish.transform.rotation = packFish
+                    ? Quaternion.Euler(0f, Random.Range(0f, 360f), 0f)
+                    : Quaternion.Euler(-90f, Random.Range(0f, 360f), 0f);
                 var wander = fish.AddComponent<AnimalWander>();
                 var wso = new SerializedObject(wander);
                 wso.FindProperty("center").vector3Value = pos;
                 wso.FindProperty("extents").vector3Value = new Vector3(2.5f, 0.5f, 2.5f);
                 wso.FindProperty("speed").floatValue = 0.4f;
-                wso.FindProperty("meshEulerOffset").vector3Value = new Vector3(-90f, 0f, 0f);
+                wso.FindProperty("meshEulerOffset").vector3Value = packFish
+                    ? PackFishOffset(path)
+                    : new Vector3(-90f, 0f, 0f);
                 wso.ApplyModifiedPropertiesWithoutUndo();
             }
 
@@ -424,6 +486,27 @@ namespace ReefExplorer.EditorTools
             CreateBoundaryWall("Bound_South", new Vector3(0f, 3f, -4f), new Vector3(30f, 8f, 1f));
             CreateBoundaryWall("Bound_East", new Vector3(13f, 3f, 10f), new Vector3(1f, 8f, 30f));
             CreateBoundaryWall("Bound_West", new Vector3(-13f, 3f, 10f), new Vector3(1f, 8f, 30f));
+        }
+
+        static bool IsSideNoseFish(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return false;
+            return path.IndexOf("[FBX]", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("/Butterfly/", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("/Anthias1/", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        static Vector3 PackFishOffset(string path)
+        {
+            if (path.IndexOf("Butterfly", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(-90f, 90f, 0f);
+            if (path.IndexOf("Anthias", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(0f, 180f, 0f);
+            if (path.IndexOf("Protomelas", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("Taeniolatus", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return new Vector3(90f, 0f, 0f);
+            return new Vector3(0f, -90f, 0f);
         }
 
         static void PopulateReefPatch(Transform parent, Vector3 center, MaterialBag mats, bool coralHeavy, bool plants)
@@ -473,27 +556,17 @@ namespace ReefExplorer.EditorTools
             Object.DestroyImmediate(wall.GetComponent<Renderer>());
         }
 
-        static void CreateZonesAndAnimals(MaterialBag mats, SpeciesDefinition[] species)
+        static void CreateZonesAndAnimals(MaterialBag mats, SpeciesDefinition[] species, SiteDefinition[] sites)
         {
             // Compact reef — short walks, zones stay in view of each other.
-            CreateSurveyZone("Zone_Coral", "zone_coral", "CORAL GARDEN", new Vector3(-8f, 0f, 12f), mats, species[0], AnimalKind.Clown);
-            CreateSurveyZone("Zone_Turtle", "zone_turtle", "SEAGRASS CROSSING", new Vector3(0f, 0f, 18f), mats, species[1], AnimalKind.Turtle);
-            CreateSurveyZone("Zone_Ray", "zone_ray", "SANDY PASSAGE", new Vector3(8f, 0f, 13f), mats, species[2], AnimalKind.Ray);
-
-            var sample = CreateTrigger("SampleZone", null, new Vector3(5f, 0.6f, 16f), new Vector3(2.2f, 1.4f, 2.2f));
-            sample.AddComponent<SampleZone>();
-            var sampleMarker = CreateCube("SampleMarker", sample.transform, Vector3.zero, new Vector3(2f, 0.05f, 2f), mats.accent);
-            var smR = sampleMarker.GetComponent<Renderer>();
-            if (smR != null)
-                smR.enabled = false;
-            var sampleLabel = CreateWorldText(sample.transform, "WATER SAMPLE POINT\nHold bottle + press E / Trigger", 0.07f, TextAnchor.LowerCenter);
-            sampleLabel.localPosition = new Vector3(0f, 1.2f, 0f);
-            sampleLabel.rotation = Quaternion.identity;
+            CreateSurveyZone("Zone_Coral", "zone_coral", "CORAL GARDEN", new Vector3(-8f, 0f, 12f), mats, species[0], AnimalKind.Clown, sites[0]);
+            CreateSurveyZone("Zone_Turtle", "zone_turtle", "SEAGRASS CROSSING", new Vector3(0f, 0f, 18f), mats, species[1], AnimalKind.Turtle, sites[1]);
+            CreateSurveyZone("Zone_Ray", "zone_ray", "STARFISH LEDGE", new Vector3(8f, 0f, 13f), mats, species[2], AnimalKind.Ray, sites[2]);
         }
 
         enum AnimalKind { Clown, Turtle, Ray }
 
-        static void CreateSurveyZone(string name, string zoneId, string label, Vector3 pos, MaterialBag mats, SpeciesDefinition species, AnimalKind kind)
+        static void CreateSurveyZone(string name, string zoneId, string label, Vector3 pos, MaterialBag mats, SpeciesDefinition species, AnimalKind kind, SiteDefinition site)
         {
             var zone = new GameObject(name);
             zone.transform.position = pos;
@@ -542,6 +615,75 @@ namespace ReefExplorer.EditorTools
             wso.FindProperty("extents").vector3Value = new Vector3(2.5f, 0.5f, 2.5f);
             wso.FindProperty("speed").floatValue = 0.35f;
             wso.ApplyModifiedPropertiesWithoutUndo();
+            
+            // Site-specific survey point
+            var surveyPoint = CreateCube("CoralSurveyPoint", zone.transform, new Vector3(2f, 0.2f, 0f), new Vector3(0.5f, 0.5f, 0.5f), mats.coral);
+            var spCollider = surveyPoint.GetComponent<Collider>();
+            spCollider.isTrigger = false;
+            var cp = surveyPoint.AddComponent<CoralSurveyPoint>();
+            var cpSo = new SerializedObject(cp);
+            cpSo.FindProperty("siteId").stringValue = site.SiteId;
+            cpSo.FindProperty("tintRenderers").arraySize = 1;
+            cpSo.FindProperty("tintRenderers").GetArrayElementAtIndex(0).objectReferenceValue = surveyPoint.GetComponent<Renderer>();
+            cpSo.ApplyModifiedPropertiesWithoutUndo();
+            
+            // Sample Zone per site
+            var sample = CreateTrigger("SampleZone", zone.transform, new Vector3(-2f, 0.6f, -1.5f), new Vector3(2.2f, 1.4f, 2.2f));
+            var sz = sample.AddComponent<SampleZone>();
+            var szSo = new SerializedObject(sz);
+            szSo.FindProperty("siteId").stringValue = site.SiteId;
+            szSo.ApplyModifiedPropertiesWithoutUndo();
+            var sampleMarker = CreateCube("SampleMarker", sample.transform, Vector3.zero, new Vector3(2f, 0.05f, 2f), mats.accent);
+            var smR = sampleMarker.GetComponent<Renderer>();
+            if (smR != null) smR.enabled = false;
+            var sampleLabel = CreateWorldText(sample.transform, "WATER SAMPLE POINT", 0.07f, TextAnchor.LowerCenter);
+            sampleLabel.localPosition = new Vector3(0f, 1.2f, 0f);
+            
+            // Marker Placement Socket per site
+            var holder = CreateCube("MarkerHolder", zone.transform, new Vector3(0f, 0.5f, -2.5f), new Vector3(0.3f, 0.3f, 0.3f), mats.metal);
+            var mSocket = holder.AddComponent<XRSocketInteractor>();
+            mSocket.socketActive = true;
+            var mHolder = holder.AddComponent<MarkerHolder>();
+            var mhSo = new SerializedObject(mHolder);
+            mhSo.FindProperty("siteId").stringValue = site.SiteId;
+            mhSo.FindProperty("socket").objectReferenceValue = mSocket;
+            mhSo.ApplyModifiedPropertiesWithoutUndo();
+            var holderLabel = CreateWorldText(holder.transform, "RESTORATION MARKER", 0.05f, TextAnchor.LowerCenter);
+            holderLabel.localPosition = new Vector3(0f, 0.4f, 0f);
+            
+            // Rubbish
+            for (var i = 0; i < site.InitialRubbishCount; i++)
+            {
+                var rub = CreateCube($"Rubbish_{i}", zone.transform, new Vector3(Random.Range(-2f, 2f), 0.1f, Random.Range(-2f, 2f)), new Vector3(0.15f, 0.15f, 0.25f), mats.bottle);
+                var rBody = rub.AddComponent<Rigidbody>();
+                ConfigureGrabBody(rBody);
+                rBody.isKinematic = true;
+                var rGrab = rub.AddComponent<XRGrabInteractable>();
+                rGrab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                var ri = rub.AddComponent<RubbishItem>();
+                var riSo = new SerializedObject(ri);
+                riSo.FindProperty("siteId").stringValue = site.SiteId;
+                riSo.FindProperty("rubbishId").stringValue = $"rubbish_{site.SiteId}_{i}";
+                riSo.ApplyModifiedPropertiesWithoutUndo();
+            }
+            
+            // Hazard
+            if (site.HasHazard)
+            {
+                var haz = CreateCube("Hazard", zone.transform, new Vector3(2.5f, 0.3f, 2.5f), new Vector3(0.6f, 0.8f, 0.6f), mats.metal);
+                var hCollider = haz.GetComponent<Collider>();
+                hCollider.isTrigger = false;
+                var hf = haz.AddComponent<HazardFlag>();
+                var hfSo = new SerializedObject(hf);
+                hfSo.FindProperty("siteId").stringValue = site.SiteId;
+                hfSo.FindProperty("hazardId").stringValue = $"hazard_{site.SiteId}";
+                hfSo.FindProperty("hazardType").stringValue = site.HazardType;
+                hfSo.FindProperty("tintRenderers").arraySize = 1;
+                hfSo.FindProperty("tintRenderers").GetArrayElementAtIndex(0).objectReferenceValue = haz.GetComponent<Renderer>();
+                hfSo.ApplyModifiedPropertiesWithoutUndo();
+                var hazLabel = CreateWorldText(haz.transform, site.HazardType.ToUpper(), 0.05f, TextAnchor.LowerCenter);
+                hazLabel.localPosition = new Vector3(0f, 0.6f, 0f);
+            }
         }
 
         static void CreateTools(MaterialBag mats, GameObject station)
@@ -776,6 +918,23 @@ namespace ReefExplorer.EditorTools
             var resultsPanel = CreateUiPanel(canvasGo.transform, "ResultsPanel", new Vector2(1040f, 680f), new Color(0.03f, 0.14f, 0.16f, 0.97f));
             resultsPanel.SetActive(false);
             var results = CreateUiText(resultsPanel.transform, "Results", "", 20, TextAnchor.UpperLeft, new Vector2(0f, 40f), new Vector2(960f, 560f));
+
+            var compPanel = CreateUiPanel(canvasGo.transform, "ComparisonPanel", new Vector2(1040f, 680f), new Color(0.04f, 0.15f, 0.12f, 0.97f));
+            compPanel.SetActive(false);
+            var compText = CreateUiText(compPanel.transform, "ComparisonText", "", 18, TextAnchor.UpperLeft, new Vector2(0f, 100f), new Vector2(960f, 440f));
+            
+            var btnRecCoral = CreateUiButton(compPanel.transform, "Btn_RecCoral", "Recommend Coral Garden", new Vector2(-300f, -260f));
+            var btnRecSea = CreateUiButton(compPanel.transform, "Btn_RecSeagrass", "Recommend Seagrass", new Vector2(0f, -260f));
+            var btnRecSand = CreateUiButton(compPanel.transform, "Btn_RecSand", "Recommend Sand", new Vector2(300f, -260f));
+
+            var compUi = canvasGo.AddComponent<ComparisonBoardUI>();
+            var cso = new SerializedObject(compUi);
+            cso.FindProperty("panel").objectReferenceValue = compPanel;
+            cso.FindProperty("comparisonText").objectReferenceValue = compText;
+            cso.FindProperty("recommendCoralButton").objectReferenceValue = btnRecCoral;
+            cso.FindProperty("recommendSeagrassButton").objectReferenceValue = btnRecSea;
+            cso.FindProperty("recommendSandButton").objectReferenceValue = btnRecSand;
+            cso.ApplyModifiedPropertiesWithoutUndo();
 
             var board = Object.FindAnyObjectByType<WorldMissionBoard>();
             if (board != null)

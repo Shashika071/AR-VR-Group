@@ -1,6 +1,7 @@
 using ReefExplorer.Audio;
 using ReefExplorer.Core;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
@@ -12,19 +13,21 @@ namespace ReefExplorer.Interaction
         [SerializeField] string toolId = "scanner";
         [SerializeField] Transform rayOrigin;
         [SerializeField] float range = 8f;
-        [SerializeField] float scanDuration = 1.25f;
+        [SerializeField] float scanDuration = 2.1f;
         [SerializeField] LayerMask hitMask = ~0;
         [SerializeField] LineRenderer beam;
 
         XRGrabInteractable grab;
         float scanProgress;
-        SurveyAnimal currentTarget;
+        IScannable currentTarget;
         bool activateHeld;
         bool desktopActivate;
+        bool desktopHeld;
         bool warnedInvalid;
+        ScanLoadBar loadBar;
 
         public float ScanProgress01 => Mathf.Clamp01(scanProgress / Mathf.Max(0.01f, scanDuration));
-        public bool IsHeld => grab != null && grab.isSelected;
+        public bool IsHeld => desktopHeld || (grab != null && grab.isSelected);
         public bool IsActivated => activateHeld || desktopActivate;
 
         void Awake()
@@ -37,6 +40,7 @@ namespace ReefExplorer.Interaction
             }
             if (beam == null)
                 beam = GetComponentInChildren<LineRenderer>(true);
+            scanDuration = Mathf.Max(scanDuration, 2.1f);
         }
 
         void OnEnable()
@@ -74,22 +78,38 @@ namespace ReefExplorer.Interaction
                 return;
             }
 
-            if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out var hit, range, hitMask,
-                    QueryTriggerInteraction.Ignore))
+            if (FindScanHit(out var hit))
             {
-                var animal = hit.collider.GetComponentInParent<SurveyAnimal>();
-                var valid = animal != null && !animal.Scanned;
+                var hazard = hit.collider.GetComponentInParent<HazardFlag>();
+                if (hazard != null && !hazard.IsScanned)
+                {
+                    SetBeam(true, false, hit.point);
+                    HideBar();
+                    if (!warnedInvalid)
+                    {
+                        warnedInvalid = true;
+                        MissionEvents.RaiseFeedback("Use the disposal tool on the green cloud.");
+                        GameAudio.PlayInvalid(transform.position);
+                    }
+
+                    StopScan();
+                    return;
+                }
+
+                var scannable = hit.collider.GetComponentInParent<IScannable>();
+                var valid = scannable != null && !scannable.IsScanned;
                 SetBeam(true, valid, hit.point);
 
                 if (!valid)
                 {
+                    HideBar();
                     if (!warnedInvalid)
                     {
                         warnedInvalid = true;
-                        if (animal != null && animal.Scanned)
+                        if (scannable != null && scannable.IsScanned)
                             MissionEvents.RaiseFeedback("Already scanned.");
                         else
-                            MissionEvents.RaiseFeedback("Aim at a survey animal.");
+                            MissionEvents.RaiseFeedback("Aim at coral, a fish, or another survey target.");
                         GameAudio.PlayInvalid(transform.position);
                     }
 
@@ -99,28 +119,84 @@ namespace ReefExplorer.Interaction
 
                 warnedInvalid = false;
 
-                if (currentTarget != animal)
+                if (currentTarget != scannable)
                 {
-                    currentTarget = animal;
+                    currentTarget = scannable;
                     scanProgress = 0f;
                     GameAudio.PlayScannerStart(transform.position);
                 }
 
                 scanProgress += Time.deltaTime;
                 GameAudio.PlayScannerProgress(transform.position, ScanProgress01);
+                ShowBar(ScanProgress01);
 
                 if (scanProgress >= scanDuration)
                 {
-                    if (currentTarget.TryMarkScanned())
+                    if (currentTarget.TryScan())
                         GameAudio.PlayScannerSuccess(transform.position);
                     StopScan();
                 }
             }
             else
             {
-                SetBeam(true, false, rayOrigin.position + rayOrigin.forward * range);
+                HideBar();
+                var origin = AimOrigin();
+                var dir = AimDirection();
+                SetBeam(true, false, origin + dir * range);
                 StopScan();
             }
+        }
+
+        public void DesktopSetHeld(bool held) => desktopHeld = held;
+
+        bool FindScanHit(out RaycastHit hit)
+        {
+            hit = default;
+            var origin = AimOrigin();
+            var dir = AimDirection();
+            var hits = Physics.SphereCastAll(origin, 0.4f, dir, range, hitMask, QueryTriggerInteraction.Collide);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var candidate in hits)
+            {
+                if (candidate.collider == null)
+                    continue;
+                if (candidate.collider.transform.IsChildOf(transform))
+                    continue;
+                if (candidate.collider.GetComponentInParent<IScannable>() == null &&
+                    candidate.collider.GetComponentInParent<HazardFlag>() == null)
+                    continue;
+                hit = candidate;
+                return true;
+            }
+
+            return false;
+        }
+
+        Vector3 AimOrigin()
+        {
+            if (desktopHeld && Camera.main != null)
+                return Camera.main.transform.position + Camera.main.transform.forward * 0.55f;
+            return rayOrigin != null ? rayOrigin.position : transform.position;
+        }
+
+        Vector3 AimDirection()
+        {
+            if (desktopHeld && Camera.main != null)
+                return Camera.main.transform.forward;
+            return rayOrigin != null ? rayOrigin.forward : transform.forward;
+        }
+
+        void ShowBar(float amount)
+        {
+            if (loadBar == null)
+                loadBar = ScanLoadBar.Create();
+            loadBar.Set(amount);
+        }
+
+        void HideBar()
+        {
+            if (loadBar != null)
+                loadBar.Hide();
         }
 
         void OnGrabbed(SelectEnterEventArgs _)
@@ -159,6 +235,7 @@ namespace ReefExplorer.Interaction
         {
             scanProgress = 0f;
             currentTarget = null;
+            HideBar();
         }
 
         void SetBeam(bool enabledBeam, bool valid, Vector3 end)
@@ -183,6 +260,88 @@ namespace ReefExplorer.Interaction
             desktopActivate = false;
             StopScan();
             SetBeam(false, false, Vector3.zero);
+            HideBar();
+        }
+    }
+
+    sealed class ScanLoadBar : MonoBehaviour
+    {
+        Image fill;
+
+        public static ScanLoadBar Create()
+        {
+            var canvasGo = new GameObject("ScanLoadCanvas");
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 80;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+
+            var root = new GameObject("ScanBar");
+            root.transform.SetParent(canvasGo.transform, false);
+            var rect = root.AddComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, -80f);
+            rect.sizeDelta = new Vector2(420f, 28f);
+            var back = root.AddComponent<Image>();
+            back.color = new Color(0.02f, 0.08f, 0.1f, 0.9f);
+            back.sprite = White();
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(root.transform, false);
+            var labelRect = labelGo.AddComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0f, 1f);
+            labelRect.anchorMax = new Vector2(1f, 1f);
+            labelRect.pivot = new Vector2(0.5f, 0f);
+            labelRect.anchoredPosition = new Vector2(0f, 4f);
+            labelRect.sizeDelta = new Vector2(0f, 24f);
+            var label = labelGo.AddComponent<Text>();
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 18;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.color = Color.white;
+            label.text = "Scanning";
+
+            var fillGo = new GameObject("Fill");
+            fillGo.transform.SetParent(root.transform, false);
+            var fillRect = fillGo.AddComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = new Vector2(4f, 4f);
+            fillRect.offsetMax = new Vector2(-4f, -4f);
+            var fill = fillGo.AddComponent<Image>();
+            fill.sprite = White();
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.color = new Color(0.2f, 0.95f, 0.75f);
+            fill.fillAmount = 0f;
+
+            var bar = canvasGo.AddComponent<ScanLoadBar>();
+            bar.fill = fill;
+            root.SetActive(false);
+            return bar;
+        }
+
+        public void Set(float amount)
+        {
+            if (fill == null)
+                return;
+            fill.transform.parent.gameObject.SetActive(true);
+            fill.fillAmount = Mathf.Clamp01(amount);
+        }
+
+        public void Hide()
+        {
+            if (fill != null)
+                fill.transform.parent.gameObject.SetActive(false);
+        }
+
+        static Sprite White()
+        {
+            var tex = Texture2D.whiteTexture;
+            return Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f));
         }
     }
 }
