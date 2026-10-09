@@ -24,32 +24,20 @@ namespace ReefExplorer.UI
         void Awake()
         {
             if (titleText != null)
-                titleText.text = "Reef Rescue — A Safe Place to Grow";
+            {
+                titleText.text = "REEF RESCUE";
+                titleText.fontSize = 40;
+                titleText.fontStyle = FontStyle.Bold;
+                titleText.color = new Color(0.55f, 0.96f, 0.92f);
+            }
 
             if (bodyText != null)
             {
-                bodyText.text =
-                    "Welcome, diver. You are helping a conservation team select\n" +
-                    "a coral-restoration trial site.\n\n" +
-                    "<b>Your Mission:</b>\n" +
-                    "1) Pick up the SCANNER and BOTTLE from the console\n" +
-                    "2) Follow the path to the buoy — insert the power cell\n" +
-                    "3) Visit all 3 sites (Coral Garden, Seagrass Crossing, Sandy Passage)\n" +
-                    "   At each site:\n" +
-                    "   • SCAN the coral survey point (aim scanner + click/trigger)\n" +
-                    "   • SCAN the animal\n" +
-                    "   • COLLECT a water sample (bring bottle to sample zone + press E/trigger)\n" +
-                    "   • PICK UP rubbish (grab it)\n" +
-                    "   • SCAN any hazards (do NOT touch — just scan)\n" +
-                    "4) Return to station — place bottle in SAMPLE ANALYSER\n" +
-                    "5) Review the COMPARISON BOARD and recommend a site\n" +
-                    "6) Take the MARKER to the chosen site\n" +
-                    "7) Submit your report\n\n" +
-                    "<b>Controls:</b>\n" +
-                    "Desktop: WASD move | Right-click look | E grab | Left-click scanner\n" +
-                    "VR/Sim: Hold Space + mouse to aim | G grab | Click to activate\n\n" +
-                    "Press VR/Simulator or Desktop, then Start Mission.";
+                bodyText.gameObject.SetActive(false);
             }
+
+            DisableLegacyIntroButtons();
+            BuildIntroductionLayout();
 
             if (briefingPanel != null)
                 briefingPanel.SetActive(true);
@@ -65,6 +53,103 @@ namespace ReefExplorer.UI
             Wire(creditsButton, () => MissionController.Instance?.ShowCredits());
             Wire(restartButton, () => MissionController.Instance?.RestartMission());
             Wire(quitButton, () => MissionController.Instance?.QuitApplication());
+        }
+
+        void DisableLegacyIntroButtons()
+        {
+            SetInactive(xrButton);
+            SetInactive(desktopButton);
+            SetInactive(startButton);
+            SetInactive(creditsButton);
+            SetInactive(restartButton);
+            SetInactive(quitButton);
+        }
+
+        static void SetInactive(Button button)
+        {
+            if (button != null)
+                button.gameObject.SetActive(false);
+        }
+
+        void BuildIntroductionLayout()
+        {
+            if (titleText == null || titleText.transform.parent == null)
+                return;
+
+            var parent = titleText.transform.parent;
+            var panelImage = parent.GetComponent<Image>();
+            if (panelImage != null)
+                panelImage.color = new Color(0.025f, 0.075f, 0.13f, 0.98f);
+
+            AddRule(parent, new Vector2(0f, 270f), new Color(0.96f, 0.78f, 0.38f, 0.9f));
+            AddText(parent, "Subtitle", "THE SILENT SIGNAL", 24, FontStyle.Bold,
+                new Color(0.96f, 0.78f, 0.38f), new Vector2(0f, 245f), new Vector2(960f, 36f),
+                TextAnchor.MiddleCenter);
+            AddText(parent, "Intro", "A guided conservation dive to restore the reef monitoring network.",
+                22, FontStyle.Normal, new Color(0.82f, 0.9f, 0.93f), new Vector2(0f, 205f),
+                new Vector2(960f, 34f), TextAnchor.MiddleCenter);
+
+            AddMissionCard(parent, "01  RESTORE", "Power the silent buoy\nand recover the baseline survey.", new Vector2(-325f, 55f),
+                new Color(0.1f, 0.38f, 0.46f, 0.95f));
+            AddMissionCard(parent, "02  SURVEY", "Scan wildlife, water,\ncoral and reef hazards.", new Vector2(0f, 55f),
+                new Color(0.12f, 0.3f, 0.42f, 0.95f));
+            AddMissionCard(parent, "03  PROTECT", "Compare the evidence\nand recommend a trial site.", new Vector2(325f, 55f),
+                new Color(0.16f, 0.34f, 0.3f, 0.95f));
+
+            AddText(parent, "Instructions", "V  VR / SIMULATOR     ENTER  BEGIN DIVE     WASD  DESKTOP MODE",
+                22, FontStyle.Bold, new Color(0.55f, 0.96f, 0.92f), new Vector2(0f, -105f),
+                new Vector2(960f, 38f), TextAnchor.MiddleCenter);
+            AddText(parent, "Controls", "Desktop: Right Mouse look  |  E grab  |  Left Click scan\n" +
+                "VR / Simulator: Space + mouse aim  |  G grab  |  Click activate",
+                22, FontStyle.Normal, new Color(0.78f, 0.86f, 0.89f), new Vector2(0f, -175f),
+                new Vector2(960f, 68f), TextAnchor.MiddleCenter);
+            AddRule(parent, new Vector2(0f, -225f), new Color(0.25f, 0.65f, 0.68f, 0.65f));
+        }
+
+        static void AddRule(Transform parent, Vector2 position, Color color)
+        {
+            var go = new GameObject("AccentRule", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(840f, 3f);
+            rect.anchoredPosition = position;
+            go.GetComponent<Image>().color = color;
+        }
+
+        static void AddMissionCard(Transform parent, string heading, string description, Vector2 position, Color color)
+        {
+            var card = new GameObject(heading.Replace(" ", "_"), typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            card.transform.SetParent(parent, false);
+            var cardRect = card.GetComponent<RectTransform>();
+            cardRect.sizeDelta = new Vector2(290f, 180f);
+            cardRect.anchoredPosition = position;
+            card.GetComponent<Image>().color = color;
+
+            AddText(card.transform, "Heading", heading, 24, FontStyle.Bold,
+                new Color(1f, 0.82f, 0.42f), new Vector2(0f, 52f), new Vector2(270f, 38f),
+                TextAnchor.MiddleCenter);
+            AddText(card.transform, "Description", description, 22, FontStyle.Normal,
+                Color.white, new Vector2(0f, -18f), new Vector2(260f, 92f), TextAnchor.MiddleCenter);
+        }
+
+        static Text AddText(Transform parent, string name, string value, int fontSize, FontStyle style,
+            Color color, Vector2 position, Vector2 size, TextAnchor alignment)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var text = go.AddComponent<Text>();
+            text.text = value;
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = fontSize;
+            text.fontStyle = style;
+            text.color = color;
+            text.alignment = alignment;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            var rect = text.rectTransform;
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
+            return text;
         }
 
         void OnEnable()
