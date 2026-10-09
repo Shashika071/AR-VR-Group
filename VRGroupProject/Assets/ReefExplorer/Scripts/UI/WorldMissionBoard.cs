@@ -23,11 +23,33 @@ namespace ReefExplorer.UI
 
         void Awake()
         {
-            var canvasScaler = GetComponentInParent<CanvasScaler>();
-            if (canvasScaler != null)
-                canvasScaler.dynamicPixelsPerUnit = 14f;
+            if (titleText != null)
+                titleText.text = "Reef Rescue — A Safe Place to Grow";
 
-            BuildIntroductionPanel();
+            if (bodyText != null)
+            {
+                bodyText.text =
+                    "Welcome, diver. You are helping a conservation team select\n" +
+                    "a coral-restoration trial site.\n\n" +
+                    "<b>Your Mission:</b>\n" +
+                    "1) Pick up the SCANNER and BOTTLE from the console\n" +
+                    "2) Follow the path to the buoy — insert the power cell\n" +
+                    "3) Visit all 3 sites (Coral Garden, Seagrass Crossing, Sandy Passage)\n" +
+                    "   At each site:\n" +
+                    "   • SCAN the coral survey point (aim scanner + click/trigger)\n" +
+                    "   • SCAN the animal\n" +
+                    "   • COLLECT a water sample (bring bottle to sample zone + press E/trigger)\n" +
+                    "   • PICK UP rubbish (grab it)\n" +
+                    "   • SCAN any hazards (do NOT touch — just scan)\n" +
+                    "4) Return to station — place bottle in SAMPLE ANALYSER\n" +
+                    "5) Review the COMPARISON BOARD and recommend a site\n" +
+                    "6) Take the MARKER to the chosen site\n" +
+                    "7) Submit your report\n\n" +
+                    "<b>Controls:</b>\n" +
+                    "Desktop: WASD move | Right-click look | E grab | Left-click scanner\n" +
+                    "VR/Sim: Hold Space + mouse to aim | G grab | Click to activate\n\n" +
+                    "Press VR/Simulator or Desktop, then Start Mission.";
+            }
 
             if (briefingPanel != null)
                 briefingPanel.SetActive(true);
@@ -36,159 +58,13 @@ namespace ReefExplorer.UI
             if (submitButton != null)
                 submitButton.gameObject.SetActive(false);
 
+            Wire(startButton, () => MissionController.Instance?.StartDive());
+            Wire(xrButton, () => modeSelector?.ChooseXr());
+            Wire(desktopButton, () => modeSelector?.ChooseDesktop());
             Wire(submitButton, () => MissionController.Instance?.TrySubmit());
-        }
-
-        void BuildIntroductionPanel()
-        {
-            HideLegacyButton(startButton);
-            HideLegacyButton(xrButton);
-            HideLegacyButton(desktopButton);
-            HideLegacyButton(creditsButton);
-            HideLegacyButton(restartButton);
-            HideLegacyButton(quitButton);
-
-            if (briefingPanel == null)
-                return;
-
-            if (titleText != null)
-            {
-                titleText.text = "REEF RESCUE";
-                titleText.fontSize = 60;
-                titleText.fontStyle = FontStyle.Bold;
-                titleText.color = new Color(0.55f, 0.96f, 0.93f);
-                titleText.alignment = TextAnchor.MiddleCenter;
-                titleText.rectTransform.anchoredPosition = new Vector2(0f, 276f);
-                titleText.rectTransform.sizeDelta = new Vector2(960f, 76f);
-                AddTextOutline(titleText, new Color(0.01f, 0.06f, 0.09f, 0.9f), 1.5f);
-            }
-
-            if (bodyText != null)
-                bodyText.gameObject.SetActive(false);
-
-            CreatePanelLine(briefingPanel.transform, "TopAccent", new Vector2(0f, 236f), new Vector2(760f, 3f),
-                new Color(0.18f, 0.83f, 0.78f, 0.9f));
-            CreateText(briefingPanel.transform, "Subtitle", "THE SILENT SIGNAL", 22, FontStyle.Bold,
-                new Color(0.96f, 0.73f, 0.34f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 214f), new Vector2(960f, 34f));
-            CreateText(briefingPanel.transform, "Welcome",
-                "A calm underwater field mission to restore a monitoring buoy and protect the reef.",
-                26, FontStyle.Normal, new Color(0.9f, 0.96f, 0.97f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 166f), new Vector2(920f, 52f));
-
-            CreateCard(briefingPanel.transform, "StepOne", "01", "RESTORE", "Power the silent reef buoy", new Vector2(-260f, 80f));
-            CreateCard(briefingPanel.transform, "StepTwo", "02", "SURVEY", "Record wildlife and water evidence", new Vector2(0f, 80f));
-            CreateCard(briefingPanel.transform, "StepThree", "03", "PROTECT", "Choose a site for coral recovery", new Vector2(260f, 80f));
-
-            CreateText(briefingPanel.transform, "Controls",
-                "DESKTOP  WASD move   •   Right-click look   •   E interact\n" +
-                "VR / SIMULATOR  Space + mouse aim   •   G grab   •   Trigger activate",
-                19, FontStyle.Normal, new Color(0.76f, 0.86f, 0.88f), TextAnchor.MiddleCenter,
-                new Vector2(0f, -40f), new Vector2(940f, 64f));
-            CreateText(briefingPanel.transform, "Footer",
-                "Your observations become evidence for a real conservation decision.",
-                19, FontStyle.Italic, new Color(0.68f, 0.8f, 0.82f), TextAnchor.MiddleCenter,
-                new Vector2(0f, -126f), new Vector2(920f, 34f));
-
-            var begin = CreatePrimaryButton(briefingPanel.transform, "BeginDive", "BEGIN DIVE", new Vector2(0f, -218f));
-            begin.onClick.AddListener(() =>
-            {
-                modeSelector?.ChooseDesktop();
-                MissionController.Instance?.StartDive();
-            });
-        }
-
-        static void HideLegacyButton(Button button)
-        {
-            if (button != null)
-                button.gameObject.SetActive(false);
-        }
-
-        static void CreatePanelLine(Transform parent, string name, Vector2 position, Vector2 size, Color color)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var image = go.AddComponent<Image>();
-            image.color = color;
-            image.raycastTarget = false;
-            var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = size;
-            rect.anchoredPosition = position;
-        }
-
-        static Text CreateText(Transform parent, string name, string value, int fontSize, FontStyle style,
-            Color color, TextAnchor alignment, Vector2 position, Vector2 size)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
-            text.text = value;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = fontSize;
-            text.fontStyle = style;
-            text.color = color;
-            text.alignment = alignment;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
-            AddTextOutline(text, new Color(0.01f, 0.05f, 0.08f, 0.8f), 1f);
-            var rect = text.rectTransform;
-            rect.sizeDelta = size;
-            rect.anchoredPosition = position;
-            return text;
-        }
-
-        static void AddTextOutline(Text text, Color color, float distance)
-        {
-            var outline = text.gameObject.GetComponent<Outline>();
-            if (outline == null)
-                outline = text.gameObject.AddComponent<Outline>();
-            outline.effectColor = color;
-            outline.effectDistance = new Vector2(distance, distance);
-            outline.useGraphicAlpha = true;
-        }
-
-        static void CreateCard(Transform parent, string name, string number, string heading, string detail, Vector2 position)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var image = go.AddComponent<Image>();
-            image.color = new Color(0.04f, 0.18f, 0.24f, 0.92f);
-            image.raycastTarget = false;
-            var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(220f, 116f);
-            rect.anchoredPosition = position;
-
-            CreateText(go.transform, "Number", number, 21, FontStyle.Bold,
-                new Color(0.96f, 0.73f, 0.34f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 38f), new Vector2(200f, 28f));
-            CreateText(go.transform, "Heading", heading, 24, FontStyle.Bold,
-                new Color(0.55f, 0.96f, 0.93f), TextAnchor.MiddleCenter,
-                new Vector2(0f, 10f), new Vector2(200f, 32f));
-            CreateText(go.transform, "Detail", detail, 17, FontStyle.Normal,
-                new Color(0.78f, 0.87f, 0.88f), TextAnchor.MiddleCenter,
-                new Vector2(0f, -23f), new Vector2(200f, 42f));
-        }
-
-        static Button CreatePrimaryButton(Transform parent, string name, string label, Vector2 position)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var image = go.AddComponent<Image>();
-            image.color = new Color(0.12f, 0.7f, 0.68f, 1f);
-            var button = go.AddComponent<Button>();
-            var colors = button.colors;
-            colors.normalColor = new Color(0.12f, 0.7f, 0.68f, 1f);
-            colors.highlightedColor = new Color(0.24f, 0.9f, 0.84f, 1f);
-            colors.pressedColor = new Color(0.08f, 0.48f, 0.5f, 1f);
-            colors.selectedColor = colors.highlightedColor;
-            button.colors = colors;
-
-            var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(300f, 62f);
-            rect.anchoredPosition = position;
-            CreateText(go.transform, "Label", label, 26, FontStyle.Bold, Color.white,
-                TextAnchor.MiddleCenter, Vector2.zero, new Vector2(300f, 62f));
-            return button;
+            Wire(creditsButton, () => MissionController.Instance?.ShowCredits());
+            Wire(restartButton, () => MissionController.Instance?.RestartMission());
+            Wire(quitButton, () => MissionController.Instance?.QuitApplication());
         }
 
         void OnEnable()
