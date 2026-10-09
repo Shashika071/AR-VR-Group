@@ -1,11 +1,12 @@
 using ReefExplorer.Core;
 using ReefExplorer.Survey;
+using ReefExplorer.UI;
 using UnityEngine;
 
 namespace ReefExplorer.Interaction
 {
     [RequireComponent(typeof(Collider))]
-    public sealed class SurveyAnimal : MonoBehaviour
+    public sealed class SurveyAnimal : MonoBehaviour, IScannable
     {
         [SerializeField] string animalInstanceId;
         [SerializeField] SpeciesDefinition species;
@@ -18,10 +19,11 @@ namespace ReefExplorer.Interaction
 
         public SpeciesDefinition Species => species;
         public string ZoneId => zoneId;
-        public bool Scanned => scanned;
+        public bool IsScanned => scanned;
+        public bool Scanned => scanned; // legacy
 
-        void OnEnable() => MissionEvents.MissionRestarted += ResetForRestart;
-        void OnDisable() => MissionEvents.MissionRestarted -= ResetForRestart;
+        void OnEnable() => MissionEvents.MissionRestarted += ResetScanned;
+        void OnDisable() => MissionEvents.MissionRestarted -= ResetScanned;
 
         void Reset()
         {
@@ -31,9 +33,15 @@ namespace ReefExplorer.Interaction
                 col.isTrigger = false;
         }
 
-        public bool TryMarkScanned()
+        public bool TryMarkScanned() => TryScan();
+
+        public bool TryScan()
         {
-            if (scanned || species == null || MissionController.Instance == null)
+            if (scanned || MissionController.Instance == null)
+                return false;
+
+            ResolveSpecies();
+            if (species == null)
                 return false;
 
             var ok = MissionController.Instance.TryRecordAnimalScan(AnimalInstanceId, species, zoneId);
@@ -42,10 +50,43 @@ namespace ReefExplorer.Interaction
 
             scanned = true;
             ApplyScannedVisual();
+            DiveReadout.Show("ANIMAL SCAN", species.DisplayName + "\n" + species.Description, 8f);
             return true;
         }
 
-        public void ResetForRestart()
+        void ResolveSpecies()
+        {
+            if (species != null || MissionController.Instance == null)
+                return;
+
+            var sites = MissionController.Instance.Sites;
+            if (sites == null)
+                return;
+
+            foreach (var site in sites)
+            {
+                if (site == null || site.TargetAnimal == null)
+                    continue;
+                var animalName = site.TargetAnimal.DisplayName;
+                if (string.IsNullOrEmpty(animalName))
+                    continue;
+                var named = gameObject.name.IndexOf(animalName, System.StringComparison.OrdinalIgnoreCase) >= 0;
+                var rayStar = animalName == "Starfish" &&
+                              gameObject.name.IndexOf("Ray", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (named || rayStar ||
+                    string.Equals(zoneId, site.ZoneId, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    species = site.TargetAnimal;
+                    if (string.IsNullOrEmpty(zoneId))
+                        zoneId = site.ZoneId;
+                    return;
+                }
+            }
+        }
+
+        public void ResetForRestart() => ResetScanned();
+
+        public void ResetScanned()
         {
             scanned = false;
             ApplyScannedVisual();

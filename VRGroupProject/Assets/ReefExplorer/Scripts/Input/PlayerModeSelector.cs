@@ -17,6 +17,8 @@ namespace ReefExplorer.Input
         [SerializeField] GameObject desktopPlayerRoot;
         [SerializeField] bool preferXrWhenDevicePresent = true;
 
+        readonly System.Collections.Generic.List<GameObject> simulatorObjects = new();
+
         void Awake()
         {
             ResolveRoots();
@@ -28,6 +30,22 @@ namespace ReefExplorer.Input
             EnsureMainCameraTag(desktopPlayerRoot);
             BindWorldCanvasCamera();
             SetSimulatorVisible(false);
+        }
+
+        void LateUpdate()
+        {
+            // The Device Simulator prefab is spawned a few frames after load.
+            // Keep its overlay matched to whichever camera is actually in use.
+            if (Time.frameCount % 20 == 0)
+                CacheSimulatorObjects();
+
+            var show = xrOriginRoot != null && xrOriginRoot.activeInHierarchy;
+            for (var i = 0; i < simulatorObjects.Count; i++)
+            {
+                var go = simulatorObjects[i];
+                if (go != null && go.activeSelf != show)
+                    go.SetActive(show);
+            }
         }
 
         void OnEnable()
@@ -210,7 +228,18 @@ namespace ReefExplorer.Input
             return devices.Count > 0;
         }
 
-        static void SetSimulatorVisible(bool visible)
+        void SetSimulatorVisible(bool visible)
+        {
+            CacheSimulatorObjects();
+            for (var i = 0; i < simulatorObjects.Count; i++)
+            {
+                var go = simulatorObjects[i];
+                if (go != null)
+                    go.SetActive(visible);
+            }
+        }
+
+        void CacheSimulatorObjects()
         {
             // Hide XR Device Simulator overlay/objects while using desktop mode.
             foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
@@ -218,8 +247,10 @@ namespace ReefExplorer.Input
                 if (mb == null)
                     continue;
                 var typeName = mb.GetType().Name;
-                if (typeName.Contains("XRDeviceSimulator") || typeName.Contains("XRInteractionSimulator"))
-                    mb.gameObject.SetActive(visible);
+                if (!typeName.Contains("XRDeviceSimulator") && !typeName.Contains("XRInteractionSimulator"))
+                    continue;
+                if (!simulatorObjects.Contains(mb.gameObject))
+                    simulatorObjects.Add(mb.gameObject);
             }
         }
     }

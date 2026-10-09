@@ -12,12 +12,16 @@ namespace ReefExplorer.Core
         RepairBuoy = 7,
         SurveyAnimals = 8,
         CollectSample = 9,
-        ReturnToStation = 10,
-        ReturnBottle = 11,
-        SubmitLog = 12,
-        Results = 13,
-        Credits = 14,
-        Paused = 15,
-        Complete = 16
+        CollectRubbish = 10,
+        ReturnToStation = 11,
+        ReturnBottle = 12,
+        AnalyseSamples = 13,
+        CompareAndChoose = 14,
+        PlaceMarker = 15,
+        SubmitLog = 16,
+        Results = 17,
+        Credits = 18,
+        Paused = 19,
+        Complete = 20
     }
 }

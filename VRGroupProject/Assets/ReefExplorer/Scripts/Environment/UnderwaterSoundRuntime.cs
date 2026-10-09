@@ -49,7 +49,8 @@ namespace ReefExplorer.Environment
             if (clip == null)
                 return false;
 
-            hub.SetAmbienceClip(clip, 0.45f);
+            hub.SetAmbienceClip(clip, 1f);
+            hub.SetAmbienceVolume(1f);
             Debug.Log("[ReefExplorer] Playing Assets/underwater-sound/Underwater.wav");
             return true;
         }

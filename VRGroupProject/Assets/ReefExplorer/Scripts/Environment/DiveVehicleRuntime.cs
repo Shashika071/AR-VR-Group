@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -6,106 +7,165 @@ using UnityEditor;
 namespace ReefExplorer.Environment
 {
     /// <summary>
-    /// Optional Space Shuttle dive craft. Silent if the Asset Store pack is not imported yet.
-    /// Player craft uses see-through glass so the reef stays visible.
+    /// Parks the Explorer submarine at the station as the dive craft.
     /// </summary>
     public sealed class DiveVehicleRuntime : MonoBehaviour
     {
+        const string SubmarinePath = "Assets/submarinespaceship_nautilus-31.glb";
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
             if (GameObject.Find("ResearchStation") == null)
                 return;
-
-            var prefab = FindShuttlePrefab();
-            if (prefab == null)
-                return; // Shuttle not imported — do nothing (no warnings, no stuck state).
-
             if (FindAnyObjectByType<DiveVehicleRuntime>() != null)
                 return;
 
             var host = new GameObject("DiveVehicleRuntime");
-            var runtime = host.AddComponent<DiveVehicleRuntime>();
-            runtime.Attach(prefab);
+            host.AddComponent<DiveVehicleRuntime>();
         }
 
-        void Attach(GameObject prefab)
+        IEnumerator Start()
         {
             var desktop = GameObject.Find("DesktopPlayer");
-            if (desktop != null)
-                AttachToPlayer(desktop.transform, prefab, new Vector3(0f, -0.85f, 0.9f), 2.5f);
+            var stuck = desktop != null ? desktop.transform.Find("DiveVehicle") : null;
+            if (stuck != null)
+                Destroy(stuck.gameObject);
 
-            var parkedGo = GameObject.Find("StationDiveCraft");
-            if (parkedGo == null)
+            GameObject prefab = null;
+            for (var i = 0; i < 8 && prefab == null; i++)
             {
-                parkedGo = Instantiate(prefab);
-                parkedGo.name = "StationDiveCraft";
-                parkedGo.transform.position = new Vector3(2.8f, 0.95f, -0.3f);
-                parkedGo.transform.rotation = Quaternion.Euler(0f, -35f, 0f);
-                DisableColliders(parkedGo);
+                prefab = FindSubmarinePrefab();
+                if (prefab == null)
+                    yield return null;
             }
 
-            FitUniformScale(parkedGo, 3.1f);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[ReefExplorer] Explorer submarine was not found at " + SubmarinePath);
+                yield break;
+            }
+
+            var old = GameObject.Find("StationDiveCraft");
+            if (old != null)
+            {
+                old.name = "OldDiveCraft";
+                Destroy(old);
+            }
+
+            var parkedGo = Instantiate(prefab);
+            parkedGo.name = "StationDiveCraft";
+            var park = new Vector3(6.2f, 0.2f, -0.6f);
+            parkedGo.transform.position = park;
+            parkedGo.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            DisableColliders(parkedGo);
+            var slot = new GameObject("VehicleBatterySlot_1");
+            slot.transform.SetParent(parkedGo.transform, false);
+            slot.transform.localPosition = Vector3.zero;
+
+            for (var i = 0; i < 8; i++)
+            {
+                if (FitWholeCraft(parkedGo, 4.8f, park))
+                {
+                    PlaceBatteryOnStation();
+                    parkedGo.AddComponent<SubmarineDrive>().PrepareCockpit();
+                    yield break;
+                }
+
+                yield return null;
+            }
+
+            parkedGo.transform.localScale = Vector3.one * 0.35f;
+            SitOnSand(parkedGo);
+            PlaceBatteryOnStation();
+            parkedGo.AddComponent<SubmarineDrive>().PrepareCockpit();
         }
 
-        static void AttachToPlayer(Transform parent, GameObject prefab, Vector3 localPos, float size)
+        static bool FitWholeCraft(GameObject go, float targetSize, Vector3 park)
         {
-            var existing = parent.Find("DiveVehicle");
-            GameObject vehicle;
-            if (existing != null)
-            {
-                vehicle = existing.gameObject;
-            }
-            else
-            {
-                vehicle = Instantiate(prefab, parent);
-                vehicle.name = "DiveVehicle";
-                DisableColliders(vehicle);
-            }
+            go.transform.localScale = Vector3.one;
+            go.transform.position = park;
+            if (!TryBounds(go, out var before))
+                return false;
 
-            vehicle.transform.localPosition = localPos;
-            vehicle.transform.localRotation = Quaternion.identity;
-            FitUniformScale(vehicle, size);
-            // Keep craft under the camera so it never blacks out the view.
-            HideMeshesInFrontOfCamera(vehicle, parent);
+            var current = Mathf.Max(before.size.x, before.size.y, before.size.z);
+            if (current < 0.0001f)
+                return false;
+
+            go.transform.localScale = Vector3.one * Mathf.Clamp(targetSize / current, 0.0001f, 80f);
+            if (!TryBounds(go, out var after))
+                return false;
+
+            var p = go.transform.position;
+            p.x += park.x - after.center.x;
+            p.z += park.z - after.center.z;
+            p.y += 0.12f - after.min.y;
+            go.transform.position = p;
+            return true;
         }
 
-        static void HideMeshesInFrontOfCamera(GameObject vehicle, Transform player)
+        static bool TryBounds(GameObject go, out Bounds bounds)
         {
-            var cam = player.GetComponentInChildren<Camera>(true);
-            if (cam == null)
+            bounds = new Bounds();
+            var found = false;
+            foreach (var renderer in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null || !renderer.enabled)
+                    continue;
+                if (!found)
+                {
+                    bounds = renderer.bounds;
+                    found = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            return found && bounds.size.sqrMagnitude > 0.000001f;
+        }
+
+        static void PlaceBatteryOnStation()
+        {
+            var pack = GameObject.Find("VehiclePowerPack_1");
+            if (pack == null || pack.transform.parent != null)
                 return;
 
-            var camPos = cam.transform.position;
-            var camFwd = cam.transform.forward;
-            foreach (var r in vehicle.GetComponentsInChildren<Renderer>(true))
-            {
-                if (r == null)
-                    continue;
-                var to = r.bounds.center - camPos;
-                // Hide anything sitting in the near forward cone (blocks Game view).
-                if (to.sqrMagnitude < 2.5f * 2.5f && Vector3.Dot(camFwd, to.normalized) > 0.35f)
-                    r.enabled = false;
-            }
+            pack.transform.SetPositionAndRotation(new Vector3(-1.62f, 1.46f, -2.42f), Quaternion.identity);
         }
 
-        static GameObject FindShuttlePrefab()
+        static void SitOnSand(GameObject go)
+        {
+            var rends = go.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0)
+                return;
+            var b = rends[0].bounds;
+            for (var i = 1; i < rends.Length; i++)
+                b.Encapsulate(rends[i].bounds);
+            var p = go.transform.position;
+            p.y += 0.05f - b.min.y;
+            go.transform.position = p;
+        }
+
+        static GameObject FindSubmarinePrefab()
         {
 #if UNITY_EDITOR
-            var guids = AssetDatabase.FindAssets("Space Shuttle t:Prefab t:Model");
-            foreach (var guid in guids)
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>(SubmarinePath);
+            if (go != null)
+                return go;
+
+            foreach (var guid in AssetDatabase.FindAssets("nautilus"))
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
-                if (path.IndexOf("Sample", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                if (string.IsNullOrEmpty(path) || path.IndexOf(".glb", System.StringComparison.OrdinalIgnoreCase) < 0)
                     continue;
-                if (path.IndexOf("Shuttle", System.StringComparison.OrdinalIgnoreCase) < 0)
-                    continue;
-                var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 if (go != null)
                     return go;
             }
 #endif
-            return Resources.Load<GameObject>("ReefModels/SpaceShuttle");
+            return Resources.Load<GameObject>("ReefModels/ExplorerSubmarine");
         }
 
         static void DisableColliders(GameObject go)
@@ -117,26 +177,5 @@ namespace ReefExplorer.Environment
             }
         }
 
-        static void FitUniformScale(GameObject go, float targetSize)
-        {
-            go.transform.localScale = Vector3.one;
-            var rends = go.GetComponentsInChildren<Renderer>();
-            if (rends.Length == 0)
-                return;
-
-            var b = rends[0].bounds;
-            for (var i = 1; i < rends.Length; i++)
-                b.Encapsulate(rends[i].bounds);
-
-            var current = Mathf.Max(b.size.x, b.size.y, b.size.z);
-            if (current < 0.01f || current > 500f)
-            {
-                go.transform.localScale = Vector3.one * 0.5f;
-                return;
-            }
-
-            var s = Mathf.Clamp(targetSize / current, 0.01f, 5f);
-            go.transform.localScale = Vector3.one * s;
-        }
     }
 }

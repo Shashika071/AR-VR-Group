@@ -1,6 +1,5 @@
+using System.Collections;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace ReefExplorer.Interaction
 {
@@ -9,10 +8,6 @@ namespace ReefExplorer.Interaction
     /// </summary>
     public sealed class PlaceToolsOnTable : MonoBehaviour
     {
-        [SerializeField] Vector3 buoyPos = new Vector3(0.55f, 1.08f, -1.7f);
-        [SerializeField] Vector3 scannerPos = new Vector3(0.05f, 1.1f, -1.7f);
-        [SerializeField] Vector3 bottlePos = new Vector3(-0.45f, 1.2f, -1.7f);
-
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
@@ -27,67 +22,61 @@ namespace ReefExplorer.Interaction
 
         void Start()
         {
-            // Positions only — stylized visuals set their own scale.
-            Place("PracticeBuoy", buoyPos);
-            Place("Scanner", scannerPos);
-            Place("SampleBottle", bottlePos);
+            var practice = GameObject.Find("PracticeBuoy");
+            if (practice != null)
+                practice.SetActive(false);
+
+            StartCoroutine(ArrangeWhenReady());
         }
 
-        void Place(string name, Vector3 worldPos)
+        IEnumerator ArrangeWhenReady()
+        {
+            yield return null;
+            yield return null;
+            yield return null;
+            yield return null;
+            Arrange();
+        }
+
+        public static void Arrange()
+        {
+            var console = GameObject.Find("Console");
+            if (console != null)
+            {
+                console.transform.localScale = new Vector3(3.8f, 0.18f, 1.25f);
+                console.transform.localPosition = new Vector3(0f, 0.95f, -2.05f);
+            }
+
+            // Front row, with a clear gap between each tool.
+            Put("PowerCell", new Vector3(-1.45f, 1.28f, -1.65f));
+            Put("Scanner", new Vector3(-0.45f, 1.12f, -1.65f));
+            Put("SampleBottle", new Vector3(0.55f, 1.14f, -1.65f));
+            Put("ToxinDisposalTool", new Vector3(1.5f, 1.05f, -1.65f));
+
+            // Back pair sits just behind the front row, in the gaps.
+            Put("RecommendationMarker", new Vector3(-0.95f, 1.12f, -2.2f));
+            var analyser = Put("SampleAnalyser", new Vector3(0.05f, 1.16f, -2.2f));
+            if (analyser != null)
+                analyser.transform.localScale = new Vector3(0.22f, 0.2f, 0.22f);
+            Put("SampleCrate", new Vector3(1.05f, 1.05f, -2.2f));
+            Put("VehiclePowerPack_1", new Vector3(-1.62f, 1.46f, -2.42f));
+
+            var anchor = GameObject.Find("PowerCell_RespawnAnchor");
+            var cell = GameObject.Find("PowerCell");
+            if (anchor != null && cell != null)
+                anchor.transform.SetPositionAndRotation(cell.transform.position, cell.transform.rotation);
+        }
+
+        static GameObject Put(string name, Vector3 worldPos)
         {
             var go = GameObject.Find(name);
-            if (go == null)
-                return;
-
-            go.transform.position = worldPos;
-
+            if (go == null || !go.activeInHierarchy)
+                return null;
+            go.transform.SetPositionAndRotation(worldPos, Quaternion.identity);
             var body = go.GetComponent<Rigidbody>();
             if (body != null)
-            {
-                body.useGravity = true;
                 RigidbodyUtil.ParkKinematic(body);
-            }
-
-            var grab = go.GetComponent<XRGrabInteractable>();
-            if (grab != null)
-            {
-                grab.selectEntered.RemoveListener(OnGrabbed);
-                grab.selectEntered.AddListener(OnGrabbed);
-            }
-
-            // Update respawn anchor if present.
-            var respawn = go.GetComponent<ToolRespawn>();
-            if (respawn != null)
-            {
-                var soPos = worldPos;
-                // ToolRespawn creates its own anchor in Awake; move object is enough for first place.
-            }
-        }
-
-        void OnGrabbed(SelectEnterEventArgs args)
-        {
-            var body = args.interactableObject.transform.GetComponent<Rigidbody>();
-            if (body == null)
-                return;
-
-            // Desktop sets kinematic itself; for XR Instantaneous also uses kinematic while held.
-            // After release, allow physics again.
-            var grab = args.interactableObject.transform.GetComponent<XRGrabInteractable>();
-            if (grab != null)
-            {
-                grab.selectExited.RemoveListener(OnReleased);
-                grab.selectExited.AddListener(OnReleased);
-            }
-        }
-
-        void OnReleased(SelectExitEventArgs args)
-        {
-            var body = args.interactableObject.transform.GetComponent<Rigidbody>();
-            if (body == null)
-                return;
-
-            body.isKinematic = false;
-            body.useGravity = true;
+            return go;
         }
     }
 }

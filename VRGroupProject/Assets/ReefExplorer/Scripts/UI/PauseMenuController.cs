@@ -16,10 +16,14 @@ namespace ReefExplorer.UI
         [SerializeField] Toggle muteToggle;
         [SerializeField] GameAudioHub audioHub;
 
+        Transform backdrop;
+
         void Awake()
         {
             if (panel != null)
                 panel.SetActive(false);
+
+            CreateBackdrop();
 
             if (resumeButton != null)
                 resumeButton.onClick.AddListener(() => MissionController.Instance?.Resume());
@@ -39,10 +43,60 @@ namespace ReefExplorer.UI
         void OnEnable() => MissionEvents.StateChanged += OnState;
         void OnDisable() => MissionEvents.StateChanged -= OnState;
 
+        public void RefreshPauseVisual()
+        {
+            if (MissionController.Instance == null)
+                return;
+            OnState(MissionController.Instance.State, MissionController.Instance.State);
+        }
+
         void OnState(MissionState _, MissionState next)
         {
+            var showMenu = next == MissionState.Paused && !ReefMinimap.ShowingBigMap;
             if (panel != null)
-                panel.SetActive(next == MissionState.Paused);
+                panel.SetActive(showMenu);
+            if (backdrop != null)
+                backdrop.gameObject.SetActive(showMenu);
+
+            if (next == MissionState.Paused)
+            {
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
+            }
+        }
+
+        void CreateBackdrop()
+        {
+            if (panel == null || panel.transform.parent == null)
+                return;
+
+            var parent = panel.transform.parent;
+            backdrop = parent.Find("PauseBackdrop");
+            if (backdrop == null)
+            {
+                var backdropObject = new GameObject("PauseBackdrop", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                backdrop = backdropObject.transform;
+                backdrop.SetParent(parent, false);
+                backdrop.SetAsFirstSibling();
+            }
+
+            var rect = backdrop as RectTransform;
+            if (rect != null)
+            {
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+            }
+
+            var image = backdrop.GetComponent<Image>();
+            if (image != null)
+            {
+                image.color = new Color(0.015f, 0.035f, 0.055f, 0.82f);
+                image.raycastTarget = true;
+            }
+
+            backdrop.gameObject.SetActive(false);
         }
     }
 }
