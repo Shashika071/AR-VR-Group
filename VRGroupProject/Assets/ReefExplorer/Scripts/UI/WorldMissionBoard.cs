@@ -225,9 +225,9 @@ namespace ReefExplorer.UI
                 {
                     var status = site.observationComplete ? "✓ Complete" : "Incomplete";
                     sb.AppendLine($"\n<b>{site.displayName}</b> [{status}]");
-                    sb.AppendLine($"  Coral: {site.currentCoralCondition}");
-                    sb.AppendLine($"  Water: {site.waterClarity} | {site.temperature:F1}°C ({site.temperatureSuitability})");
-                    sb.AppendLine($"  Rubbish: {site.rubbishRemoved}/{site.initialRubbish} removed");
+                    sb.AppendLine($"  Coral: {(site.coralScanned ? site.currentCoralCondition : "Not scanned")}");
+                    sb.AppendLine($"  Water: {(site.sampleAnalysed ? site.waterClarity + " | " + site.temperature.ToString("0.0") + " C | " + site.temperatureSuitability : "Not tested")}");
+                    sb.AppendLine($"  Rubbish: {site.rubbishRemoved}/{site.initialRubbish} in the bin");
                     if (site.hasHazard)
                         sb.AppendLine($"  Hazard: {site.hazardType} {(site.hazardFlagged ? "(Flagged ✓)" : "(Not flagged)")}");
                 }

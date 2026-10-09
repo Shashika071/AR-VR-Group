@@ -7,7 +7,7 @@ namespace ReefExplorer.Environment
 {
     /// <summary>
     /// Dresses Coral Garden with the imported coral models, turns the ray site into a starfish,
-    /// and places two power packs beside the dive craft.
+    /// and places the craft battery on the station console.
     /// </summary>
     public sealed class ReefDressRuntime : MonoBehaviour
     {
@@ -153,16 +153,10 @@ namespace ReefExplorer.Environment
                 return;
 
             var craft = GameObject.Find("StationDiveCraft");
-            if (craft == null)
-            {
-                SpawnPack("VehiclePowerPack_1", new Vector3(2.1f, 0.45f, 0.4f), null);
-                return;
-            }
+            if (craft != null)
+                MakeSlot(craft.transform, "VehicleBatterySlot_1", craft.transform.position);
 
-            MakeSlot(craft.transform, "VehicleBatterySlot_1", craft.transform.position);
-            var beside = craft.transform.position + craft.transform.right * 1.35f;
-            beside.y = 0.4f;
-            SpawnPack("VehiclePowerPack_1", beside, null);
+            SpawnPack("VehiclePowerPack_1", new Vector3(-1.62f, 1.46f, -2.42f), null);
         }
 
         static Transform MakeSlot(Transform craft, string name, Vector3 worldPos)
@@ -249,8 +243,8 @@ namespace ReefExplorer.Environment
         {
             var station = GameObject.Find("ResearchStation");
             var spot = station != null
-                ? station.transform.position + new Vector3(1.5f, 0.42f, 1.4f)
-                : new Vector3(1.5f, 0.42f, 1.4f);
+                ? station.transform.TransformPoint(new Vector3(-0.9f, 1.28f, -1.78f))
+                : new Vector3(-0.9f, 1.28f, -1.78f);
             cell.SetPositionAndRotation(spot, Quaternion.identity);
 
             var anchor = GameObject.Find("PowerCell_RespawnAnchor");

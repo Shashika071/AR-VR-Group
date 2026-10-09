@@ -61,6 +61,7 @@ namespace ReefExplorer.Survey
         public string siteId;
         public string condition;
         public float timeSeconds;
+        public bool polluted;
     }
 
     [Serializable]

@@ -1,5 +1,6 @@
 using ReefExplorer.Core;
 using ReefExplorer.Survey;
+using ReefExplorer.UI;
 using UnityEngine;
 
 namespace ReefExplorer.Interaction
@@ -36,7 +37,11 @@ namespace ReefExplorer.Interaction
 
         public bool TryScan()
         {
-            if (scanned || species == null || MissionController.Instance == null)
+            if (scanned || MissionController.Instance == null)
+                return false;
+
+            ResolveSpecies();
+            if (species == null)
                 return false;
 
             var ok = MissionController.Instance.TryRecordAnimalScan(AnimalInstanceId, species, zoneId);
@@ -45,7 +50,38 @@ namespace ReefExplorer.Interaction
 
             scanned = true;
             ApplyScannedVisual();
+            DiveReadout.Show("ANIMAL SCAN", species.DisplayName + "\n" + species.Description, 8f);
             return true;
+        }
+
+        void ResolveSpecies()
+        {
+            if (species != null || MissionController.Instance == null)
+                return;
+
+            var sites = MissionController.Instance.Sites;
+            if (sites == null)
+                return;
+
+            foreach (var site in sites)
+            {
+                if (site == null || site.TargetAnimal == null)
+                    continue;
+                var animalName = site.TargetAnimal.DisplayName;
+                if (string.IsNullOrEmpty(animalName))
+                    continue;
+                var named = gameObject.name.IndexOf(animalName, System.StringComparison.OrdinalIgnoreCase) >= 0;
+                var rayStar = animalName == "Starfish" &&
+                              gameObject.name.IndexOf("Ray", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (named || rayStar ||
+                    string.Equals(zoneId, site.ZoneId, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    species = site.TargetAnimal;
+                    if (string.IsNullOrEmpty(zoneId))
+                        zoneId = site.ZoneId;
+                    return;
+                }
+            }
         }
 
         public void ResetForRestart() => ResetScanned();

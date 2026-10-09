@@ -45,7 +45,7 @@ namespace ReefExplorer.Input
 
         void Update()
         {
-            if (!IsXrDiving())
+            if (!IsXrDiving() || ReefExplorer.Environment.OxygenMeter.Failed || ReefExplorer.Environment.SubmarineDrive.IsDriving)
             {
                 ShowCursor();
                 leftOffset = Vector2.zero;

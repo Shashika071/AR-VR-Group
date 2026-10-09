@@ -154,20 +154,20 @@ namespace ReefExplorer.UI
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0f, 0.5f);
             rect.anchoredPosition = new Vector2(180f, 0f);
-            rect.sizeDelta = new Vector2(300f, 540f);
+            rect.sizeDelta = new Vector2(320f, 720f);
 
-            AddText(rect, "REEF MAP", 26, new Vector2(0f, 230f), new Vector2(270f, 36f), Color.white);
+            AddText(rect, "REEF MAP", 26, new Vector2(0f, 310f), new Vector2(270f, 36f), Color.white);
             var rows = Palette();
             for (var i = 0; i < rows.Length; i++)
             {
-                var y = 180f - i * 34f;
+                var y = 260f - i * 34f;
                 var swatch = NewImage(rect, "Swatch" + i, circleSprite, rows[i].color);
                 swatch.rectTransform.anchoredPosition = new Vector2(-90f, y);
                 swatch.rectTransform.sizeDelta = new Vector2(22f, 22f);
                 AddText(rect, rows[i].name, 20, new Vector2(28f, y), new Vector2(180f, 28f), rows[i].color);
             }
 
-            AddText(rect, "M  close", 16, new Vector2(0f, -240f), new Vector2(220f, 24f), new Color(0.5f, 0.9f, 0.5f));
+            AddText(rect, "M  close", 16, new Vector2(0f, -320f), new Vector2(220f, 24f), new Color(0.5f, 0.9f, 0.5f));
         }
 
         void AddSites(RectTransform map, RectTransform dots, System.Collections.Generic.List<RectTransform> list, bool named)
@@ -184,6 +184,15 @@ namespace ReefExplorer.UI
                 Track(dots, list, "DeadFish_" + i, "Dead", SpotColor.Dead, 10f, named);
             Track(dots, list, "PowerCell", "Buoy battery", SpotColor.BuoyBattery, 11f, named);
             Track(dots, list, "VehiclePowerPack_1", "Craft battery", SpotColor.CraftBattery, 11f, named);
+            Track(dots, list, "OxygenRefill_Station", "Oxygen", SpotColor.Oxygen, 12f, named);
+            Track(dots, list, "RubbishBin", "Rubbish bin", SpotColor.RubbishBin, 12f, named);
+            var rubbish = FindObjectsByType<ReefExplorer.Interaction.RubbishItem>(FindObjectsSortMode.None);
+            for (var i = 0; i < rubbish.Length; i++)
+            {
+                if (rubbish[i] == null)
+                    continue;
+                Track(dots, list, rubbish[i].gameObject, "", "Rubbish", SpotColor.Rubbish, 9f, named);
+            }
         }
 
         void Track(RectTransform parent, System.Collections.Generic.List<RectTransform> list, string objectName, string caption, Color color, float size, bool named)
@@ -495,6 +504,9 @@ namespace ReefExplorer.UI
                 ("Dead fish", SpotColor.Dead),
                 ("Buoy battery", SpotColor.BuoyBattery),
                 ("Craft battery", SpotColor.CraftBattery),
+                ("Oxygen refill", SpotColor.Oxygen),
+                ("Rubbish", SpotColor.Rubbish),
+                ("Rubbish bin", SpotColor.RubbishBin),
             };
         }
 
@@ -510,6 +522,9 @@ namespace ReefExplorer.UI
             public static readonly Color Dead = new(0.95f, 0.15f, 0.15f);
             public static readonly Color BuoyBattery = new(0.55f, 0.9f, 1f);
             public static readonly Color CraftBattery = new(1f, 0.42f, 0.05f);
+            public static readonly Color Oxygen = new(0.55f, 0.95f, 1f);
+            public static readonly Color Rubbish = new(0.95f, 0.85f, 0.2f);
+            public static readonly Color RubbishBin = new(1f, 0.72f, 0.15f);
         }
 
         sealed class MapBlip : MonoBehaviour

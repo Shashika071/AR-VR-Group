@@ -11,9 +11,32 @@ namespace ReefExplorer.Interaction
         [SerializeField] Renderer[] tintRenderers;
 
         public bool IsScanned => scanned;
+        public string SiteId => siteId;
 
-        void OnEnable() => MissionEvents.MissionRestarted += ResetScanned;
-        void OnDisable() => MissionEvents.MissionRestarted -= ResetScanned;
+        void OnEnable()
+        {
+            MissionEvents.MissionRestarted += ResetScanned;
+            MissionEvents.RubbishCollected += OnCleaned;
+            MissionEvents.HazardFlagged += OnCleaned;
+        }
+
+        void OnDisable()
+        {
+            MissionEvents.MissionRestarted -= ResetScanned;
+            MissionEvents.RubbishCollected -= OnCleaned;
+            MissionEvents.HazardFlagged -= OnCleaned;
+        }
+
+        void OnCleaned(string _)
+        {
+            if (!scanned || MissionController.Instance == null)
+                return;
+            if (!MissionController.Instance.CanRescanCoral(siteId))
+                return;
+
+            scanned = false;
+            MissionEvents.RaiseFeedback("Coral is clean, scan it again.");
+        }
 
         void Reset()
         {

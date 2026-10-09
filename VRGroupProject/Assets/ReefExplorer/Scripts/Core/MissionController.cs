@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ReefExplorer.Survey;
 using ReefExplorer.Audio;
+using ReefExplorer.UI;
 using UnityEngine;
 
 namespace ReefExplorer.Core
@@ -53,7 +54,7 @@ namespace ReefExplorer.Core
 
         // Legacy compat
 #pragma warning disable CS0618
-        public bool AllSamplesCollected => sites.Length == 0 || diveLog.perSiteSamples.Count >= sites.Length;
+        public bool AllSamplesCollected => HasAllWaterSamples();
         public bool AllSamplesAnalysed => sites.Length == 0 || diveLog.perSiteSamples.TrueForAll(s => s.analysed);
 #pragma warning restore CS0618
 
@@ -122,18 +123,6 @@ namespace ReefExplorer.Core
             switch (state)
             {
                 case MissionState.TutorialMove when stepId == "move":
-                    SetState(MissionState.TutorialGrab);
-                    SetObjective(playMode == PlayModeType.Desktop
-                        ? "Tutorial: pick up the practice tool (E / Left Click), then drop it (Q)."
-                        : "Tutorial: pick up the practice tool (G while aiming), then release grip.");
-                    break;
-                case MissionState.TutorialGrab when stepId == "grab":
-                    SetState(MissionState.TutorialActivate);
-                    SetObjective(playMode == PlayModeType.Desktop
-                        ? "Tutorial: hold the practice tool and activate (Left Click)."
-                        : "Tutorial: hold the practice tool and activate (Trigger / Mouse Click).");
-                    break;
-                case MissionState.TutorialActivate when stepId == "activate":
                     SetState(MissionState.GatherTools);
                     SetObjective("Pick up the scanner and a sample bottle from the console.");
                     break;
@@ -206,12 +195,6 @@ namespace ReefExplorer.Core
             if (string.IsNullOrEmpty(siteId))
                 return false;
 
-            if (!BuoyRestored)
-            {
-                MissionEvents.RaiseFeedback("Restore the monitoring station first to unlock baseline data.");
-                return false;
-            }
-
             var site = GetSite(siteId);
             if (site == null)
             {
@@ -220,24 +203,89 @@ namespace ReefExplorer.Core
             }
 
             var progress = GetOrCreateSiteProgress(siteId);
-            if (progress.coralScanned)
+            var rescan = progress.coralScanned && CanRescanCoral(siteId);
+            if (progress.coralScanned && !rescan)
             {
                 MissionEvents.RaiseFeedback("Coral condition already recorded for this site.");
                 return false;
             }
 
+            if (rescan)
+                diveLog.coralScans.RemoveAll(s =>
+                    s != null && string.Equals(s.siteId, siteId, StringComparison.OrdinalIgnoreCase));
+
+            var polluted = SiteIsPolluted(siteId);
+            var condition = DescribeCoral(siteId);
             progress.coralScanned = true;
             diveLog.coralScans.Add(new CoralScanRecord
             {
                 siteId = siteId,
-                condition = site.CurrentCoralCondition,
-                timeSeconds = Time.timeSinceLevelLoad
+                condition = condition,
+                timeSeconds = Time.timeSinceLevelLoad,
+                polluted = polluted
             });
 
             MissionEvents.RaiseCoralScanned(siteId);
-            MissionEvents.RaiseFeedback($"Coral condition recorded at {site.DisplayName}: {site.CurrentCoralCondition}");
+            var body = site.DisplayName + "\n" + condition;
+            if (polluted)
+                body += "\nClean the rubbish and toxin, then scan again.";
+            DiveReadout.Show("CORAL SCAN", body, 9f);
+            MissionEvents.RaiseFeedback(polluted
+                ? "Coral is polluted, clean it and scan again."
+                : "Coral scan finished.");
             CheckSurveyProgress();
             return true;
+        }
+
+        public bool SiteIsPolluted(string siteId)
+        {
+            var site = GetSite(siteId);
+            if (site == null)
+                return false;
+
+            if (site.HasHazard && !diveLog.hazardsFlagged.Exists(h =>
+                    h != null && string.Equals(h.siteId, siteId, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            foreach (var item in FindObjectsByType<ReefExplorer.Interaction.RubbishItem>(FindObjectsSortMode.None))
+            {
+                if (item != null && item.gameObject.activeInHierarchy &&
+                    string.Equals(item.SiteId, siteId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public bool CanRescanCoral(string siteId)
+        {
+            var record = diveLog.coralScans.Find(s =>
+                s != null && s.polluted && string.Equals(s.siteId, siteId, StringComparison.OrdinalIgnoreCase));
+            return record != null && !SiteIsPolluted(siteId);
+        }
+
+        public string DescribeCoral(string siteId)
+        {
+            var site = GetSite(siteId);
+            if (site == null)
+                return "Unknown coral.";
+            if (!SiteIsPolluted(siteId))
+                return site.CurrentCoralCondition;
+            if (site.HasHazard)
+                return "Polluted — toxin is in the water and debris is on the coral";
+            return "Polluted — rubbish is covering the coral";
+        }
+
+        public string LatestCoralCondition(string siteId)
+        {
+            CoralScanRecord last = null;
+            foreach (var scan in diveLog.coralScans)
+            {
+                if (scan != null && string.Equals(scan.siteId, siteId, StringComparison.OrdinalIgnoreCase))
+                    last = scan;
+            }
+
+            return last != null ? last.condition : null;
         }
 
         // ───────── Animal Scanning ─────────
@@ -246,12 +294,6 @@ namespace ReefExplorer.Core
         {
             if (species == null || string.IsNullOrEmpty(animalInstanceId))
                 return false;
-
-            if (!BuoyRestored)
-            {
-                MissionEvents.RaiseFeedback("Restore the monitoring station first so the previous survey unlocks.");
-                return false;
-            }
 
             if (diveLog.scannedAnimalIds.Contains(animalInstanceId))
             {
@@ -340,7 +382,7 @@ namespace ReefExplorer.Core
             MissionEvents.RaiseWaterSampleCollected(siteId);
             MissionEvents.RaiseSampleCollected();
             if (HasAllWaterSamples())
-                MissionEvents.RaiseFeedback("All water samples complete.");
+                MissionEvents.RaiseFeedback("All water samples complete, put the bottle in the box on the table.");
             else
                 MissionEvents.RaiseFeedback($"Water sample collected from {siteName}.");
 
@@ -729,23 +771,78 @@ namespace ReefExplorer.Core
                 diveLog.completedObjectives.Add(id);
         }
 
-        bool HasAllWaterSamples()
+        public bool TryDisposeToxin(string hazardId, string siteId, string hazardType)
         {
-            if (sites == null || sites.Length == 0)
+            if (string.IsNullOrEmpty(hazardId))
                 return false;
 
-            foreach (var site in sites)
+            if (diveLog.hazardsFlagged.Exists(h =>
+                    string.Equals(h.hazardId, hazardId, StringComparison.OrdinalIgnoreCase)))
             {
-                if (site == null)
-                    return false;
-                var got = diveLog.perSiteSamples.Exists(s =>
-                    s != null && s.collected &&
-                    string.Equals(s.siteId, site.SiteId, StringComparison.OrdinalIgnoreCase));
-                if (!got)
-                    return false;
+                MissionEvents.RaiseFeedback("This toxin is already disposed.");
+                return false;
             }
 
+            diveLog.hazardsFlagged.Add(new HazardRecord
+            {
+                hazardId = hazardId,
+                siteId = siteId,
+                hazardType = hazardType,
+                timeSeconds = Time.timeSinceLevelLoad
+            });
+
+            if (!string.IsNullOrEmpty(siteId))
+            {
+                var progress = GetOrCreateSiteProgress(siteId);
+                progress.hazardFlagged = true;
+            }
+
+            MissionEvents.RaiseHazardFlagged(hazardId);
+            MissionEvents.RaiseFeedback("Toxin disposed.");
+            CheckSurveyProgress();
             return true;
+        }
+
+        static bool SiteHasCoralPoint(string siteId)
+        {
+            foreach (var point in FindObjectsByType<ReefExplorer.Interaction.CoralSurveyPoint>(FindObjectsSortMode.None))
+            {
+                if (point != null && point.gameObject.activeInHierarchy &&
+                    string.Equals(point.SiteId, siteId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public bool SiteHasSampleZone(string siteId)
+        {
+            foreach (var zone in FindObjectsByType<ReefExplorer.Interaction.SampleZone>(FindObjectsSortMode.None))
+            {
+                if (zone != null && zone.gameObject.activeInHierarchy &&
+                    string.Equals(zone.SiteId, siteId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        public bool HasAllWaterSamples()
+        {
+            var need = 0;
+            var got = 0;
+            foreach (var zone in FindObjectsByType<ReefExplorer.Interaction.SampleZone>(FindObjectsSortMode.None))
+            {
+                if (zone == null || !zone.gameObject.activeInHierarchy)
+                    continue;
+                need++;
+                if (diveLog.perSiteSamples.Exists(s =>
+                        s != null && s.collected &&
+                        string.Equals(s.siteId, zone.SiteId, StringComparison.OrdinalIgnoreCase)))
+                    got++;
+            }
+
+            return need > 0 && got >= need;
         }
 
         bool HasAllRequiredSpecies()
@@ -793,7 +890,9 @@ namespace ReefExplorer.Core
             {
                 if (site == null) continue;
                 var progress = GetOrCreateSiteProgress(site.SiteId);
-                if (!progress.coralScanned || !progress.animalScanned)
+                if (SiteHasCoralPoint(site.SiteId) && !progress.coralScanned)
+                    return false;
+                if (!progress.animalScanned)
                     return false;
             }
 
@@ -815,7 +914,9 @@ namespace ReefExplorer.Core
                 {
                     if (site == null) continue;
                     var progress = GetOrCreateSiteProgress(site.SiteId);
-                    if (!progress.coralScanned || !progress.animalScanned || !progress.sampleCollected)
+                    if ((SiteHasCoralPoint(site.SiteId) && !progress.coralScanned) ||
+                        !progress.animalScanned ||
+                        (SiteHasSampleZone(site.SiteId) && !progress.sampleCollected))
                     {
                         allSurveyed = false;
                         break;
@@ -849,9 +950,9 @@ namespace ReefExplorer.Core
                 if (site == null) continue;
                 var progress = GetOrCreateSiteProgress(site.SiteId);
                 var tasks = new List<string>();
-                if (!progress.coralScanned) tasks.Add("coral");
+                if (SiteHasCoralPoint(site.SiteId) && !progress.coralScanned) tasks.Add("coral");
                 if (!progress.animalScanned) tasks.Add("animal");
-                if (!progress.sampleCollected) tasks.Add("sample");
+                if (SiteHasSampleZone(site.SiteId) && !progress.sampleCollected) tasks.Add("sample");
                 if (tasks.Count > 0)
                     remaining.Add($"{site.DisplayName}: {string.Join(", ", tasks)}");
             }
@@ -903,7 +1004,7 @@ namespace ReefExplorer.Core
                         siteId = site.SiteId,
                         displayName = site.DisplayName,
                         baselineCoralCondition = site.BaselineCoralCondition,
-                        currentCoralCondition = site.CurrentCoralCondition,
+                        currentCoralCondition = LatestCoralCondition(site.SiteId) ?? site.CurrentCoralCondition,
                         waterClarity = site.WaterReadings.waterClarity,
                         temperature = site.WaterReadings.temperatureCelsius,
                         temperatureSuitability = site.WaterReadings.temperatureSuitability,

@@ -87,9 +87,11 @@ namespace ReefExplorer.UI
             else if (held.GetComponent<ReefExplorer.Interaction.VehiclePowerPack>() != null)
                 MissionEvents.RaiseFeedback("Stand next to the dive vehicle and press E to set this battery.");
             else if (held.GetComponent<ReefExplorer.Interaction.SampleBottle>() != null)
-                MissionEvents.RaiseFeedback("Stand in a blue sample circle, press E, and wait for the bar.");
+                MissionEvents.RaiseFeedback("Stand in a blue sample circle and press E, then put the bottle in the box on the table.");
+            else if (held.GetComponent<ReefExplorer.Interaction.ToxinDisposalTool>() != null)
+                MissionEvents.RaiseFeedback("Stand in the green cloud and press E to dispose the toxin.");
             else if (held.GetComponent<ReefExplorer.Interaction.ScannerTool>() != null)
-                MissionEvents.RaiseFeedback("Aim at coral, an animal, or the toxin and hold the mouse button.");
+                MissionEvents.RaiseFeedback("Aim at coral or an animal and hold the mouse button.");
             else
                 MissionEvents.RaiseFeedback("Press E to use this, or open the list with B and press H.");
         }
@@ -110,7 +112,7 @@ namespace ReefExplorer.UI
             panel.anchorMin = panel.anchorMax = new Vector2(0f, 1f);
             panel.pivot = new Vector2(0f, 1f);
             panel.anchoredPosition = new Vector2(16f, -44f);
-            panel.sizeDelta = new Vector2(380f, 560f);
+            panel.sizeDelta = new Vector2(520f, 720f);
 
             var back = root.AddComponent<Image>();
             back.color = new Color(0.02f, 0.08f, 0.1f, 0.92f);
@@ -125,7 +127,7 @@ namespace ReefExplorer.UI
             textRect.offsetMax = new Vector2(-8f, -6f);
             body = textGo.AddComponent<Text>();
             body.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            body.fontSize = 18;
+            body.fontSize = 28;
             body.lineSpacing = 1f;
             body.supportRichText = true;
             body.alignment = TextAnchor.UpperLeft;
@@ -150,9 +152,9 @@ namespace ReefExplorer.UI
 
             rows.Clear();
             rows.Add(Make("buoy", mc.BuoyRestored, "Buoy battery",
-                "Pick up the buoy battery at the station, carry it to the cyan box, and press E."));
+                "Pick up the buoy battery on the table, carry it to the cyan box, and press E."));
             rows.Add(Make("craft", ReefExplorer.Interaction.VehiclePowerPack.IsInstalled, "Craft battery",
-                "Pick up the craft battery beside the dive vehicle, stand next to it, and press E."));
+                "Pick up the craft battery on the station console, stand next to the dive vehicle, and press E."));
 
             var coralDone = 0;
             var coralNeed = 0;
@@ -170,12 +172,6 @@ namespace ReefExplorer.UI
                     if (site == null)
                         continue;
                     var progress = mc.GetSiteProgress(site.SiteId);
-                    coralNeed++;
-                    sampleNeed++;
-                    if (progress.coralScanned)
-                        coralDone++;
-                    if (progress.sampleCollected)
-                        sampleDone++;
                     rubbishNeed += site.InitialRubbishCount;
                     foreach (var rubbish in mc.DiveLog.rubbishCollected)
                     {
@@ -197,18 +193,51 @@ namespace ReefExplorer.UI
                 }
             }
 
+            foreach (var point in FindObjectsByType<ReefExplorer.Interaction.CoralSurveyPoint>(FindObjectsSortMode.None))
+            {
+                if (point == null || !point.gameObject.activeInHierarchy)
+                    continue;
+                coralNeed++;
+                if (point.IsScanned)
+                    coralDone++;
+            }
+
+            ReefExplorer.Environment.VisibleObjectiveTrim.Apply();
+            foreach (var zone in FindObjectsByType<ReefExplorer.Interaction.SampleZone>(FindObjectsSortMode.None))
+            {
+                if (zone == null || !zone.gameObject.activeInHierarchy)
+                    continue;
+                sampleNeed++;
+                if (mc.DiveLog.perSiteSamples.Exists(s =>
+                        s != null && s.collected &&
+                        string.Equals(s.siteId, zone.SiteId, System.StringComparison.OrdinalIgnoreCase)))
+                    sampleDone++;
+            }
+
             rows.Insert(2, Make("coral", coralNeed > 0 && coralDone >= coralNeed,
                 "Scan coral  " + coralDone + "/" + coralNeed,
-                "Pick up the scanner, go to each site, aim at the coral point, and hold click."));
+                "Pick up the scanner, aim at the coral marker, and hold click."));
             rows.Add(Make("sample", sampleNeed > 0 && sampleDone >= sampleNeed,
                 "Water sample  " + sampleDone + "/" + sampleNeed,
                 "Pick up the blue bottle, stand in a sample circle, press E, and wait for the bar."));
+            rows.Add(Make("box", ReefExplorer.Interaction.SampleReturnBox.IsDeposited, "Sample box",
+                "After every water sample, put the bottle in the box on the table and press E."));
+            rubbishNeed = Mathf.Max(0, rubbishNeed - ReefExplorer.Environment.ToxinFieldRuntime.HiddenRubbish);
+            var toxinTotal = ReefExplorer.Interaction.ToxinPatch.Total;
+            var toxinCleared = ReefExplorer.Interaction.ToxinPatch.ClearedCount;
+            if (toxinTotal <= 0)
+            {
+                toxinTotal = toxinNeeded ? 1 : 0;
+                toxinCleared = toxinDone ? 1 : 0;
+            }
             rows.Add(Make("rubbish", rubbishNeed > 0 && rubbishDone >= rubbishNeed,
                 "Rubbish  " + rubbishDone + "/" + rubbishNeed,
                 "Go to each site and press E on the rubbish to pick it up."));
-            if (toxinNeeded)
-                rows.Add(Make("toxin", toxinDone, "Flag toxin",
-                    "Pick up the scanner, go to Seagrass Crossing, aim at the green toxic air, and hold click."));
+            if (toxinNeeded || toxinTotal > 0)
+                rows.Add(Make("toxin", toxinTotal > 0 && toxinCleared >= toxinTotal, "Dispose toxin  " + toxinCleared + "/" + toxinTotal,
+                    "Pick up the disposal tool on the table, stand in each green cloud, and press E."));
+            rows.Add(Make("marker", mc.MarkerPlaced, "Recommendation marker",
+                "Choose a restoration site, pick up the green marker on the console, carry it to that site's holder, and press E."));
 
             if (selected >= rows.Count)
                 selected = 0;

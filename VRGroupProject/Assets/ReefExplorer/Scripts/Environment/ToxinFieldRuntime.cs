@@ -39,8 +39,43 @@ namespace ReefExplorer.Environment
                 : new Vector3(0f, 0.4f, 15.5f);
             center.y = 1.15f;
 
-            BuildCloud(center);
+            var spots = new[]
+            {
+                center,
+                center + new Vector3(3.4f, 0f, -0.8f),
+                center + new Vector3(-2.8f, 0f, 2.6f),
+            };
+            for (var i = 0; i < spots.Length; i++)
+            {
+                spots[i].y = 1.15f;
+                BuildCloud(spots[i], i == 0 ? "ToxinCloud" : "ToxinCloud_" + i);
+            }
+
+            if (ToxinDisposalTool.IsDisposed)
+                ToxinPatch.HideAll();
+            RemoveRubbishInToxin(spots);
             KillNearbyFish(center);
+        }
+
+        public static int HiddenRubbish { get; private set; }
+
+        static void RemoveRubbishInToxin(Vector3[] spots)
+        {
+            foreach (var rubbish in FindObjectsByType<RubbishItem>(FindObjectsSortMode.None))
+            {
+                if (rubbish == null || !rubbish.gameObject.activeInHierarchy)
+                    continue;
+                foreach (var spot in spots)
+                {
+                    var flat = rubbish.transform.position;
+                    flat.y = spot.y;
+                    if (Vector3.Distance(flat, spot) > 2.2f)
+                        continue;
+                    rubbish.gameObject.SetActive(false);
+                    HiddenRubbish++;
+                    break;
+                }
+            }
         }
 
         static void HideWordLabels()
@@ -52,13 +87,14 @@ namespace ReefExplorer.Environment
             }
         }
 
-        static void BuildCloud(Vector3 center)
+        static void BuildCloud(Vector3 center, string cloudName)
         {
-            if (GameObject.Find("ToxinCloud") != null)
+            if (GameObject.Find(cloudName) != null)
                 return;
 
-            var root = new GameObject("ToxinCloud");
+            var root = new GameObject(cloudName);
             root.transform.position = center;
+            root.AddComponent<ToxinPatch>();
 
             var puffs = new[]
             {

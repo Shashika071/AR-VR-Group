@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
@@ -28,6 +30,8 @@ namespace ReefExplorer.Interaction
             UpgradeAnimals();
             UpgradeCoralSurveyPoints();
             UpgradeRubbish();
+            StartCoroutine(RefitTrashBags());
+            StartCoroutine(UncoverRubbish());
             UpgradeHazards();
             UpgradeRecommendationMarker();
         }
@@ -54,34 +58,195 @@ namespace ReefExplorer.Interaction
 
         static void UpgradeRubbish()
         {
+            var bagPrefab = LoadTrashBag();
             var rubbishItems = FindObjectsByType<RubbishItem>(FindObjectsSortMode.None);
-            int idx = 0;
+            var i = 0;
             foreach (var ri in rubbishItems)
             {
                 var go = ri.gameObject;
-                if (go.transform.Find("Visual") != null) continue;
+                if (go.transform.Find("Visual") != null)
+                    continue;
 
                 var visual = new GameObject("Visual");
                 visual.transform.SetParent(go.transform, false);
+                var parentScale = go.transform.lossyScale;
+                visual.transform.localScale = new Vector3(
+                    1f / Mathf.Max(0.01f, parentScale.x),
+                    1f / Mathf.Max(0.01f, parentScale.y),
+                    1f / Mathf.Max(0.01f, parentScale.z));
 
-                // Alternate between can and bag shapes
-                if (idx % 2 == 0)
+                var rootRenderer = go.GetComponent<MeshRenderer>();
+                if (rootRenderer != null)
+                    rootRenderer.enabled = false;
+
+                if (bagPrefab != null)
                 {
-                    CreatePart(visual.transform, "Can", PrimitiveType.Cylinder,
-                        Vector3.zero, new Vector3(0.06f, 0.08f, 0.06f),
-                        new Color(0.7f, 0.7f, 0.7f));
-                    CreatePart(visual.transform, "Label", PrimitiveType.Cube,
-                        new Vector3(0f, 0f, 0.035f), new Vector3(0.05f, 0.06f, 0.005f),
-                        new Color(0.8f, 0.2f, 0.2f));
+                    var bag = Object.Instantiate(bagPrefab, visual.transform);
+                    bag.name = "TrashBag";
+                    bag.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+                    bag.transform.localRotation = Quaternion.Euler(0f, i * 47f, 0f);
+                    foreach (var col in bag.GetComponentsInChildren<Collider>(true))
+                        Object.Destroy(col);
+                    FitTrashBag(bag, 0.42f);
                 }
                 else
                 {
                     CreatePart(visual.transform, "Bag", PrimitiveType.Cube,
-                        Vector3.zero, new Vector3(0.1f, 0.07f, 0.06f),
-                        new Color(0.3f, 0.3f, 0.35f));
+                        new Vector3(0f, 0.06f, 0f), new Vector3(0.16f, 0.1f, 0.1f),
+                        new Color(0.08f, 0.08f, 0.08f));
                 }
-                idx++;
+
+                i++;
             }
+        }
+
+        static GameObject LoadTrashBag()
+        {
+#if UNITY_EDITOR
+            return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Black_Trash_Bag.fbx");
+#else
+            return null;
+#endif
+        }
+
+        IEnumerator RefitTrashBags()
+        {
+            yield return null;
+            foreach (var bag in FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            {
+                if (bag != null && bag.name == "TrashBag")
+                    FitTrashBag(bag.gameObject, 0.42f);
+            }
+        }
+
+        IEnumerator UncoverRubbish()
+        {
+            yield return null;
+            yield return null;
+            yield return null;
+            var rocks = RockRenderers();
+            foreach (var item in FindObjectsByType<RubbishItem>(FindObjectsSortMode.None))
+            {
+                if (item == null || !item.gameObject.activeInHierarchy)
+                    continue;
+
+                for (var n = 0; n < 8; n++)
+                {
+                    if (!PushOutOfRock(item.transform, rocks))
+                        break;
+                }
+
+                var p = item.transform.position;
+                p.y = 0.22f;
+                item.transform.position = p;
+            }
+        }
+
+        static List<Renderer> RockRenderers()
+        {
+            var list = new List<Renderer>();
+            foreach (var renderer in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (renderer == null || !renderer.enabled || !CoversTheSand(renderer))
+                    continue;
+                list.Add(renderer);
+            }
+
+            return list;
+        }
+
+        static bool CoversTheSand(Renderer renderer)
+        {
+            var bounds = renderer.bounds;
+            if (bounds.extents.y < 0.2f)
+                return false;
+            if (bounds.extents.x < 0.35f && bounds.extents.z < 0.35f)
+                return false;
+            if (bounds.extents.x > 5f || bounds.extents.z > 5f)
+                return false;
+            if (bounds.min.y > 1.4f)
+                return false;
+
+            var name = renderer.gameObject.name;
+            if (name.IndexOf("Sand", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Water", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Plant", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Beacon", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Particle", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Cloud", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Fish", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Star", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Trash", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf("Bag", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return false;
+
+            return true;
+        }
+
+        static bool PushOutOfRock(Transform item, List<Renderer> rocks)
+        {
+            var p = item.position;
+            Renderer cover = null;
+            var nearest = float.MaxValue;
+            foreach (var rock in rocks)
+            {
+                if (rock == null)
+                    continue;
+                var bounds = rock.bounds;
+                bounds.Expand(new Vector3(0.55f, 0.5f, 0.55f));
+                var probe = p;
+                probe.y = Mathf.Clamp(p.y + 0.2f, bounds.min.y, bounds.max.y);
+                if (!bounds.Contains(probe))
+                    continue;
+                var flat = bounds.center - p;
+                flat.y = 0f;
+                var dist = flat.sqrMagnitude;
+                if (dist >= nearest)
+                    continue;
+                nearest = dist;
+                cover = rock;
+            }
+
+            if (cover == null)
+                return false;
+
+            var edge = cover.bounds;
+            edge.Expand(new Vector3(0.95f, 0f, 0.95f));
+            var left = Mathf.Abs(p.x - edge.min.x);
+            var right = Mathf.Abs(edge.max.x - p.x);
+            var back = Mathf.Abs(p.z - edge.min.z);
+            var forward = Mathf.Abs(edge.max.z - p.z);
+            var best = Mathf.Min(Mathf.Min(left, right), Mathf.Min(back, forward));
+            if (best == left)
+                p.x = edge.min.x;
+            else if (best == right)
+                p.x = edge.max.x;
+            else if (best == back)
+                p.z = edge.min.z;
+            else
+                p.z = edge.max.z;
+            p.x = Mathf.Clamp(p.x, -12f, 12f);
+            p.y = 0.22f;
+            p.z = Mathf.Clamp(p.z, 0.5f, 21f);
+            item.position = p;
+            return true;
+        }
+
+        static void FitTrashBag(GameObject go, float targetSize)
+        {
+            if (go == null)
+                return;
+            go.transform.localScale = Vector3.one;
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+                return;
+            var bounds = renderers[0].bounds;
+            for (var n = 1; n < renderers.Length; n++)
+                bounds.Encapsulate(renderers[n].bounds);
+            var current = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            if (current < 0.001f)
+                return;
+            go.transform.localScale = Vector3.one * (targetSize / current);
         }
 
         static void UpgradeHazards()
@@ -93,6 +258,9 @@ namespace ReefExplorer.Interaction
 
                 var visual = new GameObject("Visual");
                 visual.transform.SetParent(go.transform, false);
+                var rootRenderer = go.GetComponent<MeshRenderer>();
+                if (rootRenderer != null)
+                    rootRenderer.enabled = false;
 
                 // Barrel shape for toxic hazard
                 CreatePart(visual.transform, "Barrel", PrimitiveType.Cylinder,
@@ -147,7 +315,7 @@ namespace ReefExplorer.Interaction
             HideRootMesh(go);
             ClearCollidersImmediate(go);
 
-            go.transform.SetPositionAndRotation(new Vector3(0.15f, 1.13f, -1.7f), Quaternion.identity);
+            go.transform.SetPositionAndRotation(new Vector3(-0.3f, 1.12f, -1.78f), Quaternion.identity);
             go.transform.localScale = Vector3.one;
 
             var box = go.AddComponent<BoxCollider>();
@@ -211,7 +379,7 @@ namespace ReefExplorer.Interaction
             ClearCollidersImmediate(go);
 
             // Table-sized bottle, closer to buoy scale.
-            go.transform.SetPositionAndRotation(new Vector3(-0.35f, 1.14f, -1.7f), Quaternion.identity);
+            go.transform.SetPositionAndRotation(new Vector3(0.3f, 1.14f, -1.78f), Quaternion.identity);
             go.transform.localScale = Vector3.one;
 
             var capsule = go.AddComponent<CapsuleCollider>();
@@ -257,35 +425,8 @@ namespace ReefExplorer.Interaction
         static void UpgradeBuoy()
         {
             var go = GameObject.Find("PracticeBuoy");
-            if (go == null)
-                return;
-
-            var oldVisual = go.transform.Find("Visual");
-            if (oldVisual != null)
-                Destroy(oldVisual.gameObject);
-
-            go.transform.position = new Vector3(0.55f, 1.12f, -1.7f);
-            // Match tool scale better (was oversized vs scanner/bottle).
-            go.transform.localScale = Vector3.one * 0.14f;
-
-            var rootRenderer = go.GetComponent<MeshRenderer>();
-            if (rootRenderer != null)
-                rootRenderer.enabled = true;
-
-            if (go.GetComponent<Collider>() == null)
-                go.AddComponent<SphereCollider>();
-
-            EnsureGrabReady(go);
-            RefreshGrabColliders(go);
-
-            var visual = new GameObject("Visual");
-            visual.transform.SetParent(go.transform, false);
-            CreatePart(visual.transform, "Stripe", PrimitiveType.Cylinder,
-                Vector3.zero, new Vector3(1.05f, 0.12f, 1.05f), Color.white);
-
-            AddFloatingLabel(go.transform, "BUOY", new Vector3(0f, 0.9f, 0f), 0.08f);
-            if (go.GetComponent<TableDropSnap>() == null)
-                go.AddComponent<TableDropSnap>();
+            if (go != null)
+                go.SetActive(false);
         }
 
         static void UpgradeAnimals()
@@ -462,9 +603,9 @@ namespace ReefExplorer.Interaction
     /// </summary>
     public sealed class TableDropSnap : MonoBehaviour
     {
-        [SerializeField] float tableY = 1.14f;
-        [SerializeField] Vector3 tableCenter = new Vector3(0f, 1.14f, -1.7f);
-        [SerializeField] float tableRadius = 1.6f;
+        [SerializeField] float tableY = 1.08f;
+        [SerializeField] Vector3 tableCenter = new Vector3(0f, 1.08f, -2f);
+        [SerializeField] float tableRadius = 1.5f;
 
         Rigidbody body;
         XRGrabInteractable grab;

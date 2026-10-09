@@ -12,6 +12,8 @@ namespace ReefExplorer.Interaction
         [SerializeField] string rubbishId = "rubbish_01";
         [SerializeField] string siteId = "site_coral";
 
+        public string SiteId => siteId;
+
         XRGrabInteractable grab;
 
         void Awake()
@@ -34,24 +36,19 @@ namespace ReefExplorer.Interaction
             if (MissionController.Instance == null)
                 return;
 
-            var ok = MissionController.Instance.TryCollectRubbish(rubbishId, siteId);
-            if (ok)
-            {
-                GameAudio.PlayRubbishCollect(transform.position);
-                
-                // Force drop so it doesn't stay stuck to the hand
-                if (args.interactorObject is UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor baseInteractor)
-                    baseInteractor.interactionManager.SelectCancel((UnityEngine.XR.Interaction.Toolkit.Interactors.IXRSelectInteractor)baseInteractor, (UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)grab);
+            RubbishBin.ShowHint(true);
+            MissionEvents.RaiseFeedback("Carry this rubbish to the bin at the station.");
+        }
 
-                // Hide and disable instead of destroy to allow restarts to restore it if needed
-                gameObject.SetActive(false);
-            }
-            else
-            {
-                // Force drop if they already picked it up somehow
-                if (args.interactorObject is UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor baseInteractor2)
-                    baseInteractor2.interactionManager.SelectCancel((UnityEngine.XR.Interaction.Toolkit.Interactors.IXRSelectInteractor)baseInteractor2, (UnityEngine.XR.Interaction.Toolkit.Interactables.IXRSelectInteractable)grab);
-            }
+        public bool CollectNow()
+        {
+            if (MissionController.Instance == null)
+                return false;
+            if (!MissionController.Instance.TryCollectRubbish(rubbishId, siteId))
+                return false;
+            GameAudio.PlayRubbishCollect(transform.position);
+            gameObject.SetActive(false);
+            return true;
         }
     }
 }
