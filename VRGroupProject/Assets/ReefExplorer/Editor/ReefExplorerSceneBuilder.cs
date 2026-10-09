@@ -906,8 +906,14 @@ namespace ReefExplorer.EditorTools
                 "Welcome, diver. Restore the buoy, survey wildlife, return a water sample.",
                 22, TextAnchor.UpperLeft, new Vector2(0f, 140f), new Vector2(960f, 220f));
 
+            var xrBtn = CreateUiButton(briefing.transform, "Btn_XR", "VR / Simulator", new Vector2(-300f, -200f));
+            var deskBtn = CreateUiButton(briefing.transform, "Btn_Desktop", "Desktop", new Vector2(-80f, -200f));
+            var startBtn = CreateUiButton(briefing.transform, "Btn_Start", "Start Dive", new Vector2(140f, -200f));
             var submitBtn = CreateUiButton(briefing.transform, "Btn_Submit", "Submit Log", new Vector2(320f, -200f));
             submitBtn.gameObject.SetActive(false);
+            var creditsBtn = CreateUiButton(briefing.transform, "Btn_Credits", "Credits", new Vector2(-300f, -280f));
+            var restartBtn = CreateUiButton(briefing.transform, "Btn_Restart", "Restart", new Vector2(-80f, -280f));
+            var quitBtn = CreateUiButton(briefing.transform, "Btn_Quit", "Quit", new Vector2(140f, -280f));
 
             var resultsPanel = CreateUiPanel(canvasGo.transform, "ResultsPanel", new Vector2(1040f, 680f), new Color(0.03f, 0.14f, 0.16f, 0.97f));
             resultsPanel.SetActive(false);
@@ -937,13 +943,13 @@ namespace ReefExplorer.EditorTools
                 bso.FindProperty("titleText").objectReferenceValue = title;
                 bso.FindProperty("bodyText").objectReferenceValue = body;
                 bso.FindProperty("resultsText").objectReferenceValue = results;
-                bso.FindProperty("startButton").objectReferenceValue = null;
-                bso.FindProperty("xrButton").objectReferenceValue = null;
-                bso.FindProperty("desktopButton").objectReferenceValue = null;
+                bso.FindProperty("startButton").objectReferenceValue = startBtn;
+                bso.FindProperty("xrButton").objectReferenceValue = xrBtn;
+                bso.FindProperty("desktopButton").objectReferenceValue = deskBtn;
                 bso.FindProperty("submitButton").objectReferenceValue = submitBtn;
-                bso.FindProperty("creditsButton").objectReferenceValue = null;
-                bso.FindProperty("restartButton").objectReferenceValue = null;
-                bso.FindProperty("quitButton").objectReferenceValue = null;
+                bso.FindProperty("creditsButton").objectReferenceValue = creditsBtn;
+                bso.FindProperty("restartButton").objectReferenceValue = restartBtn;
+                bso.FindProperty("quitButton").objectReferenceValue = quitBtn;
                 bso.FindProperty("modeSelector").objectReferenceValue = modeSelector;
                 bso.FindProperty("briefingPanel").objectReferenceValue = briefing;
                 bso.FindProperty("resultsPanel").objectReferenceValue = resultsPanel;
