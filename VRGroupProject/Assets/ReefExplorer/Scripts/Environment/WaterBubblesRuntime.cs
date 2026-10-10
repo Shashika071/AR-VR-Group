@@ -193,22 +193,26 @@ namespace ReefExplorer.Environment
     /// <summary>Slow rise + reset so bubble clusters loop underwater.</summary>
     public sealed class BubbleDrift : MonoBehaviour
     {
-        // Not serialized. Unity 6 drops the saved values for this class because it
-        // does not live in its own file, and the player then crashes reading them.
-        float speed;
-        float wobble;
-        float resetY;
-        Vector3 basePos;
+        // NonSerialized: this class is not in its own file, so Unity 6 omits these
+        // values from the built scene and the player crashes if it tries to read them.
+        [System.NonSerialized] public float speed;
+        [System.NonSerialized] public float wobble;
+        [System.NonSerialized] public float resetY;
+        [System.NonSerialized] public Vector3 basePos;
 
         float phase;
         int updatePhase;
 
         void Start()
         {
-            speed = Random.Range(0.12f, 0.35f);
-            wobble = Random.Range(0.15f, 0.5f);
-            resetY = Random.Range(3.5f, 6f);
-            basePos = transform.position;
+            if (speed <= 0f)
+                speed = Random.Range(0.12f, 0.35f);
+            if (wobble <= 0f)
+                wobble = Random.Range(0.15f, 0.5f);
+            if (resetY <= 0f)
+                resetY = Random.Range(3.5f, 6f);
+            if (basePos == Vector3.zero)
+                basePos = transform.position;
             phase = Random.Range(0f, Mathf.PI * 2f);
             updatePhase = Random.Range(0, 2);
         }

@@ -109,7 +109,7 @@ namespace ReefExplorer.Core
             SetState(MissionState.TutorialMove);
             SetObjective(playMode == PlayModeType.Desktop
                 ? "Tutorial: walk forward with WASD to the marked training gate."
-                : "Tutorial: teleport forward to the marked training gate.");
+                : "Tutorial: move (WASD in the simulator) or teleport forward to the marked training gate.");
         }
 
         // ───────── Tutorial ─────────

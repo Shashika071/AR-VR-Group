@@ -105,7 +105,7 @@ namespace ReefExplorer.UI
             body.text =
                 "CONTROLS\n\n" +
                 "Desktop:  Right Mouse look    E grab    Left Click scan\n" +
-                "VR:  Space + mouse aim    G grab    Click activate\n\n" +
+                "VR Simulator:  WASD move    E grab / drop    Hold Left Click use\n\n" +
                 "Esc closes this box";
             var bodyRect = body.rectTransform;
             bodyRect.sizeDelta = new Vector2(520f, 180f);
