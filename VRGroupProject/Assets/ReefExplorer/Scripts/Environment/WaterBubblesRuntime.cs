@@ -140,19 +140,21 @@ namespace ReefExplorer.Environment
         static GameObject LoadModel(string path)
         {
 #if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
-#else
-            return null;
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (model != null)
+                return model;
 #endif
+            return PlayerAssetCatalog.Model(path);
         }
 
         static Texture2D LoadTexture(string path)
         {
 #if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-#else
-            return null;
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (texture != null)
+                return texture;
 #endif
+            return PlayerAssetCatalog.Texture(path);
         }
 
         static void StripColliders(GameObject go)

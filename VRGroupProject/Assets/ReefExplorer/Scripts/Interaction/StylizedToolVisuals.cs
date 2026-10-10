@@ -145,10 +145,11 @@ namespace ReefExplorer.Interaction
         static GameObject LoadTrashBag()
         {
 #if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Black_Trash_Bag.fbx");
-#else
-            return null;
+            var bag = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Black_Trash_Bag.fbx");
+            if (bag != null)
+                return bag;
 #endif
+            return ReefExplorer.Environment.PlayerAssetCatalog.Model("Assets/Black_Trash_Bag.fbx");
         }
 
         IEnumerator RefitTrashBags()

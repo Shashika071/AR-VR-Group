@@ -288,10 +288,11 @@ namespace ReefExplorer.Environment
         static GameObject LoadModel(string path)
         {
 #if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
-#else
-            return null;
+            var model = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (model != null)
+                return model;
 #endif
+            return PlayerAssetCatalog.Model(path);
         }
     }
 }

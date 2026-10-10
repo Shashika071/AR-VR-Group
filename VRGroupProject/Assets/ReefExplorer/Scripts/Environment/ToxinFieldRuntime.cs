@@ -59,6 +59,8 @@ namespace ReefExplorer.Environment
 
         public static int HiddenRubbish { get; private set; }
 
+        public static void ResetStatic() => HiddenRubbish = 0;
+
         static void RemoveRubbishInToxin(Vector3[] spots)
         {
             foreach (var rubbish in FindObjectsByType<RubbishItem>(FindObjectsSortMode.None))

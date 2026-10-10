@@ -80,7 +80,14 @@ namespace ReefExplorer.Input
             }
 
             if (ReefExplorer.Environment.SubmarineDrive.IsDriving)
+            {
+                if (Keyboard.current != null &&
+                    Keyboard.current[interactKey].wasPressedThisFrame &&
+                    heldTransform != null &&
+                    heldTransform.GetComponent<RecommendationMarker>() != null)
+                    HandleInteract();
                 return;
+            }
 
             Look();
             Move();
@@ -308,14 +315,16 @@ namespace ReefExplorer.Input
             var marker = heldTransform != null ? heldTransform.GetComponent<RecommendationMarker>() : null;
             if (marker != null)
             {
-                var from = cameraTransform != null ? cameraTransform.position : transform.position;
-                if (MarkerHolder.TryPlaceNearest(from, marker))
-                {
+                var eye = cameraTransform != null ? cameraTransform.position : transform.position;
+                if (MarkerHolder.TryPlaceNearest(eye, transform.position, marker))
                     ReleaseHoldKeepPlaced();
-                    return;
-                }
+                return;
+            }
 
-                MissionEvents.RaiseFeedback("Carry the marker to the holder at your chosen site and press E.");
+            var analyser = heldTransform != null ? heldTransform.GetComponent<SampleAnalyser>() : null;
+            if (analyser != null)
+            {
+                analyser.TryUse();
                 return;
             }
 
@@ -462,6 +471,8 @@ namespace ReefExplorer.Input
             }
             if (heldTransform.GetComponent<RubbishItem>() != null)
                 RubbishBin.ShowHint(true);
+            if (heldTransform.GetComponent<RecommendationMarker>() != null)
+                MarkerHolder.ShowPlaceHints(true);
 
             var cell = heldTransform.GetComponent<PowerCell>();
             if (cell != null)
@@ -475,12 +486,14 @@ namespace ReefExplorer.Input
 
             if (heldTransform.GetComponent<ToxinDisposalTool>() != null)
                 MissionEvents.RaiseFeedback("Disposal tool. Press E in the green cloud.");
+            else if (heldTransform.GetComponent<SampleAnalyser>() != null)
+                MissionEvents.RaiseFeedback("Analyser. Press E to test the water samples.");
             else if (heldScanner != null)
                 MissionEvents.RaiseFeedback("Hold the left mouse button and aim at coral or a fish.");
             else if (heldTransform.GetComponent<RubbishItem>() != null)
                 MissionEvents.RaiseFeedback("Carry this rubbish to the yellow bin at the station.");
             else if (heldTransform.GetComponent<RecommendationMarker>() != null)
-                MissionEvents.RaiseFeedback("Recommendation marker. Carry it to the holder at your chosen site and press E.");
+                MissionEvents.RaiseFeedback("Marker. The green ring shows where to plant it. Press E there.");
             else if (cell == null && heldTransform.GetComponent<VehiclePowerPack>() == null)
                 MissionEvents.RaiseFeedback($"Picked up {heldTransform.name}. Press Q to drop.");
             else if (cell == null)
@@ -613,6 +626,7 @@ namespace ReefExplorer.Input
             if (heldScanner != null)
                 heldScanner.DesktopSetHeld(false);
             RubbishBin.ShowHint(false);
+            MarkerHolder.ShowPlaceHints(false);
             heldBody = null;
             heldTransform = null;
             heldScanner = null;
@@ -635,6 +649,7 @@ namespace ReefExplorer.Input
                     VehiclePowerPack.ShowVehicleHint(false);
                 ToxinDisposalTool.ShowHint(false);
                 SampleReturnBox.ShowHint(false);
+                MarkerHolder.ShowPlaceHints(false);
             }
 
             // If near the station table, put the item on the table. Otherwise normal drop.

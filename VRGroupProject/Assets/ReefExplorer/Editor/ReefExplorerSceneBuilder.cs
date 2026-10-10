@@ -349,9 +349,11 @@ namespace ReefExplorer.EditorTools
             board.AddComponent<WorldMissionBoard>();
 
             var holder = CreateCube("SampleAnalyser", station.transform, new Vector3(1.35f, 1.1f, -1.75f), new Vector3(0.35f, 0.28f, 0.35f), mats.accent);
-            holder.AddComponent<BottleSocket>();
-            var socketInteractor = holder.AddComponent<XRSocketInteractor>();
-            socketInteractor.socketActive = true;
+            var analyserBody = holder.AddComponent<Rigidbody>();
+            ConfigureGrabBody(analyserBody);
+            analyserBody.isKinematic = true;
+            var analyserGrab = holder.AddComponent<XRGrabInteractable>();
+            analyserGrab.movementType = XRBaseInteractable.MovementType.Instantaneous;
             holder.AddComponent<SampleAnalyser>();
             
             var analyserLabel = CreateWorldText(station.transform, "SAMPLE ANALYSER", 0.06f, TextAnchor.LowerCenter);

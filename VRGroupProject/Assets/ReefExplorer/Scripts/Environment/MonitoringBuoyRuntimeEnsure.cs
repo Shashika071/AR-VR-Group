@@ -78,6 +78,8 @@ namespace ReefExplorer.Environment
 #if UNITY_EDITOR
             signal.clip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/ReefExplorer/Audio/sfx_buoy_signal.wav");
 #endif
+            if (signal.clip == null)
+                signal.clip = PlayerAssetCatalog.Clip("Assets/ReefExplorer/Audio/sfx_buoy_signal.wav");
 
             var buoy = root.AddComponent<MonitoringBuoy>();
             var fieldR = typeof(MonitoringBuoy).GetField("statusRenderers",

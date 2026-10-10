@@ -62,7 +62,7 @@ namespace ReefExplorer.Environment
             if (clip != null)
                 return clip;
 #endif
-            return Resources.Load<AudioClip>("underwater-sound/Underwater");
+            return PlayerAssetCatalog.Clip(ClipPath);
         }
     }
 }

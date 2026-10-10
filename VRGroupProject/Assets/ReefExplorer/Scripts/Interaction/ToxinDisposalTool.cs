@@ -18,6 +18,12 @@ namespace ReefExplorer.Interaction
 
         public static bool IsDisposed { get; private set; }
 
+        public static void ResetStatic()
+        {
+            IsDisposed = false;
+            hint = null;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
@@ -291,6 +297,8 @@ namespace ReefExplorer.Interaction
                     patch.gameObject.SetActive(false);
             }
         }
+
+        public static void ClearStatic() => all.Clear();
 
         public static void ResetAll()
         {

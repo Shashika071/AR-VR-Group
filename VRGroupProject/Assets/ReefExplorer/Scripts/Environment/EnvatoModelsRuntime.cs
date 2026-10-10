@@ -383,10 +383,11 @@ namespace ReefExplorer.Environment
             if (go != null)
                 return go;
             var alt = assetPath.Replace(".fbx", ".FBX").Replace(".obj", ".OBJ");
-            return AssetDatabase.LoadAssetAtPath<GameObject>(alt);
-#else
-            return null;
+            go = AssetDatabase.LoadAssetAtPath<GameObject>(alt);
+            if (go != null)
+                return go;
 #endif
+            return PlayerAssetCatalog.Model(assetPath);
         }
 
         static void DisableCollidersNow(GameObject go)

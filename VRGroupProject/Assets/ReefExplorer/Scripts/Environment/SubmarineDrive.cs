@@ -12,6 +12,8 @@ namespace ReefExplorer.Environment
     {
         public static bool IsDriving { get; private set; }
 
+        public static void ResetStatic() => IsDriving = false;
+
         Transform player;
         Transform cameraTransform;
         Transform cameraParent;

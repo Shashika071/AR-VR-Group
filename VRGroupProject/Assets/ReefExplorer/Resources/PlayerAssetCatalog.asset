@@ -1,0 +1,159 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9185524208f3cad42aa8f2410cb6bcf2, type: 3}
+  m_Name: PlayerAssetCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::ReefExplorer.Environment.PlayerAssetCatalog
+  models:
+  - path: Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas taeniolatus.FBX
+    asset: {fileID: 919132149155446097, guid: 2ae28c56ebf422246a81e2dca3dc46de, type: 3}
+  - path: Assets/Fish/[FBX] Undualte_Triggerfish/Undualte_Triggerfish.FBX
+    asset: {fileID: 919132149155446097, guid: 6b0a3762978919d40939069bf3f249ee, type: 3}
+  - path: Assets/Fish/Anthias1/Anthias1.FBX
+    asset: {fileID: 919132149155446097, guid: 48ab25386e7995640bb181ec499d7199, type: 3}
+  - path: Assets/Fish/Anthias1/Anthias1.obj
+    asset: {fileID: 919132149155446097, guid: 9c195008a4dcc154b95cc14afe7f8b1f, type: 3}
+  - path: Assets/Fish/Butterfly/Butterfly.FBX
+    asset: {fileID: 919132149155446097, guid: d4ea19ac81cdaa9458452d4a1d447780, type: 3}
+  - path: Assets/Fish/Butterfly/Butterfly.obj
+    asset: {fileID: 919132149155446097, guid: 8eb762712cfd4734ebbd3584581df0f8, type: 3}
+  - path: Assets/Fish/Clownfish.fbx
+    asset: {fileID: 919132149155446097, guid: 11b64b10fafa6de4cb66b4329d194528, type: 3}
+  - path: Assets/Fish/Flatfish.fbx
+    asset: {fileID: 919132149155446097, guid: 0d080809505abb34c833e7aadaca1c83, type: 3}
+  - path: Assets/Fish/ZebraClownFish.fbx
+    asset: {fileID: 919132149155446097, guid: 80eb2f90349ad4346bcb6611e721dcbe, type: 3}
+  - path: Assets/New_fish/Aligator Gar.FBX
+    asset: {fileID: 919132149155446097, guid: 12c07316ef3c39f429da6211eff31e87, type: 3}
+  - path: Assets/New_fish/Angelfish.obj
+    asset: {fileID: 919132149155446097, guid: 640b9e07702d04f4680ea6b2af12e3cf, type: 3}
+  - path: Assets/New_fish/Betta_Fish.obj
+    asset: {fileID: 919132149155446097, guid: dd5960870086b5144941deeb96660cd9, type: 3}
+  - path: Assets/New_fish/Protomelas Spilonotus.FBX
+    asset: {fileID: 919132149155446097, guid: ab674ba435024724d8b95f2cef1a4e9e, type: 3}
+  - path: Assets/New_fish/Undualte_Triggerfish.FBX
+    asset: {fileID: 919132149155446097, guid: 04e6b2a7be9284c4f8e518469262b40c, type: 3}
+  - path: Assets/Corals/Coral 25.fbx
+    asset: {fileID: 919132149155446097, guid: be460fba45d60ec4c9b5c93d3dfcc45e, type: 3}
+  - path: Assets/Corals/Sun_Coral/Sun_Coral.obj
+    asset: {fileID: 919132149155446097, guid: f2526a1ee76ce0b4eb0cb3b404660369, type: 3}
+  - path: Assets/Corals/Yellow_Coral.obj
+    asset: {fileID: 919132149155446097, guid: bea089639b520c64e8473627efdaf227, type: 3}
+  - path: Assets/Other_Animals/jelly/Jellyfish.fbx
+    asset: {fileID: 919132149155446097, guid: 3312ef3c56dc5a540a266726c3740079, type: 3}
+  - path: Assets/Other_Animals/LoggerheadTurtle.FBX
+    asset: {fileID: 919132149155446097, guid: 64b6ff3de058afc42be5c7a4efc91d59, type: 3}
+  - path: Assets/new_item/handpainted-stylized-grass-and-rocks/source/upload.fbx
+    asset: {fileID: 919132149155446097, guid: 5e53231e8faee524f807e5b613901b20, type: 3}
+  - path: Assets/new_item/lowpoly_coral.glb
+    asset: {fileID: -6689036041284674117, guid: f906a352f552b9f4b9ea92ed043fc453, type: 3}
+  - path: Assets/new_item/lowpoly_coral_2.glb
+    asset: {fileID: -6689036041284674117, guid: 9483bb5493421a04189736cba83fa38e, type: 3}
+  - path: Assets/Water_bubles/Prop_09_Bubbles_Size_01_StemCell.fbx
+    asset: {fileID: 919132149155446097, guid: b547b2ad8f832054894ff7b90b013ead, type: 3}
+  - path: Assets/Sea_Star/Sea_Star.obj
+    asset: {fileID: 919132149155446097, guid: 74bcf311f779dd34f9a28af779bfdb9a, type: 3}
+  - path: Assets/submarinespaceship_nautilus-31.glb
+    asset: {fileID: -6689036041284674117, guid: c40276e16667b2943929c0049c93ebae, type: 3}
+  - path: Assets/Car Battery.glb
+    asset: {fileID: 8771091787928289351, guid: 1102294cdc9ff204494334e71a80c2fc, type: 3}
+  - path: Assets/Car Battery.obj
+    asset: {fileID: 919132149155446097, guid: 8fb0dda0936cdc4409ab21d5dec520a9, type: 3}
+  - path: Assets/Black_Trash_Bag.fbx
+    asset: {fileID: 919132149155446097, guid: 4e3e1810fb75b7d46abcecba83662899, type: 3}
+  - path: Assets/[FBX] AAA Battery 03/AAA Battery 03.FBX
+    asset: {fileID: 919132149155446097, guid: c1a4c46b6063b3a4986e59eeddbc33b4, type: 3}
+  clips:
+  - path: Assets/underwater-sound/Underwater.wav
+    asset: {fileID: 8300000, guid: afaabedb87355c34e959425d8dab3982, type: 3}
+  - path: Assets/ReefExplorer/Audio/ambience_station_hum.wav
+    asset: {fileID: 8300000, guid: 00c9cd3906423fb428fe44f090b9bdd1, type: 3}
+  - path: Assets/ReefExplorer/Audio/ambience_underwater.wav
+    asset: {fileID: 8300000, guid: 1a34b208be890cf4b844cc88aa6da60c, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_buoy_signal.wav
+    asset: {fileID: 8300000, guid: b7a40c98f953a7a4bb5095348f112468, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_invalid.wav
+    asset: {fileID: 8300000, guid: a26b4221f22256a4e97ca4b8c5cc1807, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_mission_success.wav
+    asset: {fileID: 8300000, guid: ac636f1586e23c94da2d313c1ab0eb15, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_objective.wav
+    asset: {fileID: 8300000, guid: 9be6b5ba6f34e8b4697141b39f96b667, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_sample_fill.wav
+    asset: {fileID: 8300000, guid: 4d67f2c06a686334c84b1293aae0592e, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_scanner_progress.wav
+    asset: {fileID: 8300000, guid: 69c7a79caa672074488b0b1023b13785, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_scanner_start.wav
+    asset: {fileID: 8300000, guid: b4dd4e25413b97340ab21d7abcad648c, type: 3}
+  - path: Assets/ReefExplorer/Audio/sfx_scanner_success.wav
+    asset: {fileID: 8300000, guid: 9eb1f4bf5192cdb4d81468767ae4d79e, type: 3}
+  textures:
+  - path: Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas Taeniolatus_bump.jpg
+    asset: {fileID: 2800000, guid: 7e10c2f84b2f8534cbb45e21d8f5251c, type: 3}
+  - path: Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas Taeniolatus_diffuse.jpg
+    asset: {fileID: 2800000, guid: 3f761d891c553c245badef0a9f36627a, type: 3}
+  - path: Assets/Fish/[FBX] Protomelas taeniolatus/Protomelas Taeniolatus_opacity.jpg
+    asset: {fileID: 2800000, guid: baf3ddf185fa6c042b0f0607281e5a05, type: 3}
+  - path: Assets/Fish/[FBX] Undualte_Triggerfish/undulatetrigger_bump.jpg
+    asset: {fileID: 2800000, guid: 89dda73ca7aa3944595c9363354232c0, type: 3}
+  - path: Assets/Fish/[FBX] Undualte_Triggerfish/undulatetrigger_diffuse.jpg
+    asset: {fileID: 2800000, guid: b946a6ee296851946897a4ee9c2365a1, type: 3}
+  - path: Assets/Fish/[FBX] Undualte_Triggerfish/undulatetrigger_opacity.jpg
+    asset: {fileID: 2800000, guid: c28f1621deb84b94e9fa847f4f55fd48, type: 3}
+  - path: Assets/Fish/[FBX] Undualte_Triggerfish/undulatetrigger_specular.jpg
+    asset: {fileID: 2800000, guid: b2b35707af1d8cb4ca2af381fc31b521, type: 3}
+  - path: Assets/Fish/Anthias1/neon_fish_bump.jpg
+    asset: {fileID: 2800000, guid: b036cfd3b984ded4e9a1bfe0dbddd21e, type: 3}
+  - path: Assets/Fish/Anthias1/neon_fish_diffuse.jpg
+    asset: {fileID: 2800000, guid: 8b6416e5f4300224e89f28a5eee40cd3, type: 3}
+  - path: Assets/Fish/Anthias1/neon_fish_opac.jpg
+    asset: {fileID: 2800000, guid: a1cf5c61576f91d449d81f654e21e257, type: 3}
+  - path: Assets/Fish/Butterfly/buterfly fish copy.JPG
+    asset: {fileID: 2800000, guid: 180bd1f7ece415240b195d16d6b63081, type: 3}
+  - path: Assets/Fish/Butterfly/Buterfly_NRM.jpg
+    asset: {fileID: 2800000, guid: 8444b14fa927f9c4d92a223b8a138a8b, type: 3}
+  - path: Assets/Fish/Butterfly/Buterfly_opacity.jpg
+    asset: {fileID: 2800000, guid: c644705f2f5b868469a25d83271d23c4, type: 3}
+  - path: Assets/Fish/Butterfly/Buterfly_SPEC.jpg
+    asset: {fileID: 2800000, guid: 650bb4f3792d4894aad7f0403c7895b6, type: 3}
+  - path: Assets/Fish/Butterfly/Map__4_Normal_Bump.tga
+    asset: {fileID: 2800000, guid: b2428b1129a625445a53a1a4ef715278, type: 3}
+  - path: Assets/Corals/Sun_Coral/Coral_bump.jpg
+    asset: {fileID: 2800000, guid: 49848de86bcd45b41839db6ba0a3dd2e, type: 3}
+  - path: Assets/Corals/Sun_Coral/Coral_diffuse.jpg
+    asset: {fileID: 2800000, guid: d3a75435db7e32347bd8adf1b34dadd0, type: 3}
+  - path: Assets/Corals/Sun_Coral/Coral_stone_bump.jpg
+    asset: {fileID: 2800000, guid: a24abca901170d44d8ef0f362e9f187d, type: 3}
+  - path: Assets/Corals/Sun_Coral/Coral_stone_diffuse.jpg
+    asset: {fileID: 2800000, guid: a5dbaee2530377a4298c242f303f4a02, type: 3}
+  - path: Assets/Other_Animals/jelly/Jellyfish_BaseColor.png
+    asset: {fileID: 2800000, guid: c557f88ca96be264f8fee9920c685d36, type: 3}
+  - path: Assets/new_item/handpainted-stylized-grass-and-rocks/textures/Cube_Color.png
+    asset: {fileID: 2800000, guid: 34d225c8d445733488cd17dc14643698, type: 3}
+  - path: Assets/new_item/handpainted-stylized-grass-and-rocks/textures/Plane.001_Color.png
+    asset: {fileID: 2800000, guid: 2ed62bb2f1d1dcf4d8ab4a65908761db, type: 3}
+  - path: Assets/new_item/handpainted-stylized-grass-and-rocks/textures/Plane.002_Color.png
+    asset: {fileID: 2800000, guid: 6d38451b8c3f08b4e977fa96f952c7a9, type: 3}
+  - path: Assets/new_item/handpainted-stylized-grass-and-rocks/textures/Plane.025_Color.png
+    asset: {fileID: 2800000, guid: 3c21ab641a1acc74fa5e10f86d0e75fc, type: 3}
+  - path: Assets/new_item/handpainted-stylized-grass-and-rocks/textures/Plane_Color.png
+    asset: {fileID: 2800000, guid: f4da6546c4c504542982d0a9dd3c9a52, type: 3}
+  - path: Assets/Water_bubles/textures/Bath_Soap_Bubbles_bcolor.png
+    asset: {fileID: 2800000, guid: 2a0e7117ed048764aab5a5056540bed3, type: 3}
+  - path: Assets/Water_bubles/textures/Bath_Soap_Bubbles_metal.png
+    asset: {fileID: 2800000, guid: 59bbcd3ce1a2c5e4d8853af271fd6d66, type: 3}
+  - path: Assets/Water_bubles/textures/Bath_Soap_Bubbles_norm.png
+    asset: {fileID: 2800000, guid: 5a8a1a94d9632be47864dab969f77171, type: 3}
+  - path: Assets/Water_bubles/textures/Bath_Soap_Bubbles_rough.png
+    asset: {fileID: 2800000, guid: 9f2875831f1fcaf4b995e4c392af7b67, type: 3}
+  - path: Assets/Sea_Star/see_star_bump.png
+    asset: {fileID: 2800000, guid: 26f692e5fc96e6c4892fe2a2b37ebbb8, type: 3}
+  - path: Assets/Sea_Star/see_star_diffuse.png
+    asset: {fileID: 2800000, guid: 679e80b278542c74080fa5dffe22435b, type: 3}

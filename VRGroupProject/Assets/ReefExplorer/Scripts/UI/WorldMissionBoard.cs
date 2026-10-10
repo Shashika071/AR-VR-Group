@@ -95,15 +95,6 @@ namespace ReefExplorer.UI
                 new Color(0.12f, 0.3f, 0.42f, 0.95f));
             AddMissionCard(parent, "03  PROTECT", "Compare the evidence\nand recommend a trial site.", new Vector2(325f, 55f),
                 new Color(0.16f, 0.34f, 0.3f, 0.95f));
-
-            AddText(parent, "Instructions", "V  VR / SIMULATOR     ENTER  BEGIN DIVE     WASD  DESKTOP MODE",
-                22, FontStyle.Bold, new Color(0.55f, 0.96f, 0.92f), new Vector2(0f, -105f),
-                new Vector2(960f, 38f), TextAnchor.MiddleCenter);
-            AddText(parent, "Controls", "Desktop: Right Mouse look  |  E grab  |  Left Click scan\n" +
-                "VR / Simulator: Space + mouse aim  |  G grab  |  Click activate",
-                22, FontStyle.Normal, new Color(0.78f, 0.86f, 0.89f), new Vector2(0f, -175f),
-                new Vector2(960f, 68f), TextAnchor.MiddleCenter);
-            AddRule(parent, new Vector2(0f, -225f), new Color(0.25f, 0.65f, 0.68f, 0.65f));
         }
 
         static void AddRule(Transform parent, Vector2 position, Color color)
@@ -166,6 +157,9 @@ namespace ReefExplorer.UI
 
         void OnState(MissionState _, MissionState next)
         {
+            if (next == MissionState.Paused)
+                return;
+
             if (submitButton != null)
             {
                 var showSubmit = next == MissionState.SubmitLog || next == MissionState.Results;

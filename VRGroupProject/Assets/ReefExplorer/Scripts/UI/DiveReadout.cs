@@ -10,6 +10,8 @@ namespace ReefExplorer.UI
     public sealed class DiveReadout : MonoBehaviour
     {
         static DiveReadout instance;
+
+        public static void ResetStatic() => instance = null;
         RectTransform card;
         Text title;
         Text body;

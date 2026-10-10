@@ -18,12 +18,16 @@ namespace ReefExplorer.Interaction
         void OnEnable()
         {
             grab.selectEntered.AddListener(OnGrabbed);
+            grab.selectExited.AddListener(OnReleased);
         }
 
         void OnDisable()
         {
             grab.selectEntered.RemoveListener(OnGrabbed);
+            grab.selectExited.RemoveListener(OnReleased);
         }
+
+        void OnReleased(SelectExitEventArgs _) => MarkerHolder.ShowPlaceHints(false);
 
         void OnGrabbed(SelectEnterEventArgs args)
         {
@@ -41,7 +45,8 @@ namespace ReefExplorer.Interaction
                 var site = MissionController.Instance.Sites.Count > 0 
                     ? MissionController.Instance.RecommendedSiteId 
                     : "";
-                MissionEvents.RaiseFeedback($"Take this marker to the selected site ({site}) and place it in the holder.");
+                MarkerHolder.ShowPlaceHints(true);
+                MissionEvents.RaiseFeedback($"Take this marker to the selected site ({site}). The green ring shows the holder.");
             }
         }
     }

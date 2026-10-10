@@ -21,6 +21,13 @@ namespace ReefExplorer.Interaction
         public static bool IsReady { get; private set; }
         public static bool IsDeposited { get; private set; }
 
+        public static void ResetStatic()
+        {
+            IsReady = false;
+            IsDeposited = false;
+            instance = null;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {

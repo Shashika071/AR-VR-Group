@@ -17,6 +17,8 @@ namespace ReefExplorer.UI
 
         public static bool ShowingBigMap { get; private set; }
 
+        public static void ResetStatic() => ShowingBigMap = false;
+
         RectTransform cornerMap;
         RectTransform cornerSweep;
         RectTransform cornerPlayer;

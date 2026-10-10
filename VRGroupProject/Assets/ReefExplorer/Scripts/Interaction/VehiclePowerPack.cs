@@ -19,6 +19,8 @@ namespace ReefExplorer.Interaction
 
         public static void MarkInstalled() => IsInstalled = true;
 
+        public static void ResetStatic() => IsInstalled = false;
+
         void Awake()
         {
             if (grab == null)

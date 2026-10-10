@@ -45,6 +45,9 @@ namespace ReefExplorer.UI
 
         void OnState(MissionState _, MissionState next)
         {
+            if (next == MissionState.Paused)
+                return;
+
             if (panel != null)
             {
                 var show = next >= MissionState.AnalyseSamples && next <= MissionState.SubmitLog;

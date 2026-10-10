@@ -5,6 +5,7 @@ using ReefExplorer.Survey;
 using ReefExplorer.Audio;
 using ReefExplorer.UI;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace ReefExplorer.Core
 {
@@ -234,6 +235,7 @@ namespace ReefExplorer.Core
                 ? "Coral is polluted, clean it and scan again."
                 : "Coral scan finished.");
             CheckSurveyProgress();
+            TryFinishIfComplete();
             return true;
         }
 
@@ -331,6 +333,7 @@ namespace ReefExplorer.Core
             MissionEvents.RaiseFeedback(fact);
 
             CheckSurveyProgress();
+            TryFinishIfComplete();
             return true;
         }
 
@@ -387,6 +390,7 @@ namespace ReefExplorer.Core
                 MissionEvents.RaiseFeedback($"Water sample collected from {siteName}.");
 
             CheckSurveyProgress();
+            TryFinishIfComplete();
             return true;
         }
 
@@ -444,6 +448,7 @@ namespace ReefExplorer.Core
             MissionEvents.RaiseFeedback($"Rubbish collected and placed in basket. ({diveLog.rubbishCollected.Count} total)");
 
             CheckSurveyProgress();
+            TryFinishIfComplete();
             return true;
         }
 
@@ -479,6 +484,7 @@ namespace ReefExplorer.Core
             MissionEvents.RaiseFeedback("Hazard flagged for specialist removal team. Do not attempt to remove it yourself.");
 
             CheckSurveyProgress();
+            TryFinishIfComplete();
             return true;
         }
 
@@ -549,6 +555,7 @@ namespace ReefExplorer.Core
                 BuildComparison();
             }
 
+            TryFinishIfComplete();
             return true;
         }
 
@@ -592,7 +599,7 @@ namespace ReefExplorer.Core
             // Check evidence completeness
             if (!HasSufficientEvidence())
             {
-                MissionEvents.RaiseFeedback("Collect more evidence before making a recommendation. Complete all site surveys first.");
+                MissionEvents.RaiseFeedback("Scan the coral and the animal at every site, then press E in the green ring.");
                 return false;
             }
 
@@ -645,10 +652,17 @@ namespace ReefExplorer.Core
             diveLog.markerSiteId = atSiteId;
             CompleteObjective("marker_placed");
             MissionEvents.RaiseMarkerPlaced();
-            MissionEvents.RaiseFeedback("Research marker placed. Return to the station to submit your final report.");
+            RememberVisitedSites();
+            if (CanSubmit())
+                MissionEvents.RaiseFeedback("Mission complete. Your final report is on screen.");
+            else
+                MissionEvents.RaiseFeedback("Marker placed. Finish the remaining tasks to receive the final report.");
 
             SetState(MissionState.SubmitLog);
-            SetObjective("Return to the research station and submit your final report.");
+            SetObjective(CanSubmit()
+                ? "Mission complete."
+                : "Finish the remaining survey tasks to receive the final report.");
+            TryFinishIfComplete();
             return true;
         }
 
@@ -660,7 +674,84 @@ namespace ReefExplorer.Core
                    HasAllRequiredSpecies() &&
                    HasAllZones() &&
                    !string.IsNullOrEmpty(diveLog.recommendedSiteId) &&
-                   diveLog.markerPlaced;
+                   diveLog.markerPlaced &&
+                   WaterTestsFinished() &&
+                   RubbishFinished() &&
+                   ToxinFinished();
+        }
+
+        void TryFinishIfComplete()
+        {
+            if (state is MissionState.Results or MissionState.Credits or MissionState.Complete)
+                return;
+
+            RememberVisitedSites();
+            if (!CanSubmit())
+                return;
+
+            TrySubmit();
+        }
+
+        void RememberVisitedSites()
+        {
+            if (sites == null)
+                return;
+
+            foreach (var site in sites)
+            {
+                if (site == null)
+                    continue;
+                var progress = GetOrCreateSiteProgress(site.SiteId);
+                if (progress.animalScanned || progress.coralScanned)
+                    NotifyZoneEntered(site.ZoneId);
+            }
+        }
+
+        bool WaterTestsFinished()
+        {
+            if (!HasAllWaterSamples())
+                return false;
+
+            foreach (var sample in diveLog.perSiteSamples)
+            {
+                if (sample != null && sample.collected && !sample.analysed)
+                    return false;
+            }
+
+            return true;
+        }
+
+        bool RubbishFinished()
+        {
+            foreach (var item in FindObjectsByType<ReefExplorer.Interaction.RubbishItem>(FindObjectsSortMode.None))
+            {
+                if (item != null && item.gameObject.activeInHierarchy)
+                    return false;
+            }
+
+            return true;
+        }
+
+        bool ToxinFinished()
+        {
+            var total = ReefExplorer.Interaction.ToxinPatch.Total;
+            if (total > 0)
+                return ReefExplorer.Interaction.ToxinPatch.ClearedCount >= total;
+
+            if (sites == null)
+                return true;
+
+            foreach (var site in sites)
+            {
+                if (site == null || !site.HasHazard)
+                    continue;
+                var flagged = diveLog.hazardsFlagged.Exists(h =>
+                    h != null && string.Equals(h.siteId, site.SiteId, StringComparison.OrdinalIgnoreCase));
+                if (!flagged)
+                    return false;
+            }
+
+            return true;
         }
 
         public bool TrySubmit()
@@ -676,7 +767,7 @@ namespace ReefExplorer.Core
             lastSavedPath = DiveLogSaver.Save(diveLog, lastComparison);
             MissionEvents.RaiseSurveySubmitted();
             SetState(MissionState.Results);
-            SetObjective("Mission complete. Review your dive report.");
+            SetObjective("Mission complete.");
             GameAudio.PlayMissionSuccess();
             return true;
         }
@@ -713,10 +804,25 @@ namespace ReefExplorer.Core
         public void RestartMission()
         {
             Time.timeScale = 1f;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
             ResetSession("restart");
-            MissionEvents.RaiseMissionRestarted();
-            SetState(MissionState.ModeSelect);
-            SetObjective("Choose VR Headset / Simulator or Desktop Keyboard & Mouse.");
+            ClearRuntimeStatics();
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        static void ClearRuntimeStatics()
+        {
+            MissionEvents.ClearAll();
+            GameAudio.Unbind();
+            ReefExplorer.Environment.SubmarineDrive.ResetStatic();
+            ReefExplorer.Environment.ToxinFieldRuntime.ResetStatic();
+            ReefExplorer.Interaction.ToxinDisposalTool.ResetStatic();
+            ReefExplorer.Interaction.ToxinPatch.ClearStatic();
+            ReefExplorer.Interaction.VehiclePowerPack.ResetStatic();
+            ReefExplorer.Interaction.SampleReturnBox.ResetStatic();
+            ReefExplorer.UI.ReefMinimap.ResetStatic();
+            ReefExplorer.UI.DiveReadout.ResetStatic();
         }
 
         public void QuitApplication()
@@ -800,6 +906,7 @@ namespace ReefExplorer.Core
             MissionEvents.RaiseHazardFlagged(hazardId);
             MissionEvents.RaiseFeedback("Toxin disposed.");
             CheckSurveyProgress();
+            TryFinishIfComplete();
             return true;
         }
 
@@ -976,6 +1083,12 @@ namespace ReefExplorer.Core
                 return "Choose a restoration site recommendation before submitting.";
             if (!diveLog.markerPlaced)
                 return "Place the research marker at the recommended site before submitting.";
+            if (!WaterTestsFinished())
+                return "Test every water sample with the analyser before the report.";
+            if (!RubbishFinished())
+                return "Put the remaining rubbish in the bin before the report.";
+            if (!ToxinFinished())
+                return "Clear the toxin before the report.";
             return "Mission incomplete.";
         }
 

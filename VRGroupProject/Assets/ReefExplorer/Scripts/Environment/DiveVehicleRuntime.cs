@@ -165,7 +165,7 @@ namespace ReefExplorer.Environment
                     return go;
             }
 #endif
-            return Resources.Load<GameObject>("ReefModels/ExplorerSubmarine");
+            return PlayerAssetCatalog.Model(SubmarinePath);
         }
 
         static void DisableColliders(GameObject go)

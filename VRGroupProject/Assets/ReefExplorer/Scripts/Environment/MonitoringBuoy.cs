@@ -36,7 +36,7 @@ namespace ReefExplorer.Environment
             ApplyVisual();
             UpdateSignal();
             if (restored)
-                GameAudio.PlayObjectiveComplete(transform.position);
+                PlayPowerOn();
         }
 
         void OnRestart()
@@ -74,19 +74,90 @@ namespace ReefExplorer.Environment
 
         void UpdateSignal()
         {
+            EnsureSource();
+            if (!restored)
+            {
+                signalSource.Stop();
+                return;
+            }
+
+            if (signalSource.clip == null)
+                signalSource.clip = PingClip();
+            signalSource.loop = true;
+            signalSource.volume = 0.7f;
+            if (!signalSource.isPlaying)
+                signalSource.Play();
+        }
+
+        void PlayPowerOn()
+        {
+            EnsureSource();
+            signalSource.PlayOneShot(PowerOnClip(), 1f);
+            GameAudio.PlayObjectiveComplete(transform.position);
+        }
+
+        void EnsureSource()
+        {
             if (signalSource == null)
+                signalSource = GetComponentInChildren<AudioSource>();
+            if (signalSource != null)
                 return;
 
-            if (restored)
+            var go = new GameObject("SignalSource");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 2.2f, 0f);
+            signalSource = go.AddComponent<AudioSource>();
+            signalSource.playOnAwake = false;
+            signalSource.spatialBlend = 0.35f;
+            signalSource.minDistance = 4f;
+            signalSource.maxDistance = 36f;
+            signalSource.loop = true;
+        }
+
+        static AudioClip pingClip;
+        static AudioClip powerOnClip;
+
+        static AudioClip PingClip()
+        {
+            if (pingClip != null)
+                return pingClip;
+
+            const int rate = 44100;
+            const float seconds = 0.9f;
+            var count = (int)(rate * seconds);
+            var data = new float[count];
+            for (var i = 0; i < count; i++)
             {
-                signalSource.Stop();
-                signalSource.loop = false;
+                var t = i / (float)rate;
+                var blip = t < 0.16f ? Mathf.Sin(2f * Mathf.PI * 520f * t) * (1f - t / 0.16f) : 0f;
+                data[i] = blip * 0.55f;
             }
-            else if (signalSource.isPlaying)
+
+            pingClip = AudioClip.Create("BuoyPing", count, 1, rate, false);
+            pingClip.SetData(data, 0);
+            return pingClip;
+        }
+
+        static AudioClip PowerOnClip()
+        {
+            if (powerOnClip != null)
+                return powerOnClip;
+
+            const int rate = 44100;
+            const float seconds = 0.45f;
+            var count = (int)(rate * seconds);
+            var data = new float[count];
+            for (var i = 0; i < count; i++)
             {
-                // Looping buoy beep disabled — was too noisy during playtests.
-                signalSource.Stop();
+                var t = i / (float)rate;
+                var freq = t < 0.18f ? 520f : 780f;
+                var env = Mathf.Sin(Mathf.PI * Mathf.Clamp01(t / seconds));
+                data[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * env * 0.6f;
             }
+
+            powerOnClip = AudioClip.Create("BuoyPowerOn", count, 1, rate, false);
+            powerOnClip.SetData(data, 0);
+            return powerOnClip;
         }
     }
 }

@@ -11,6 +11,7 @@ namespace ReefExplorer.Audio
         static GameAudioHub hub;
 
         public static void Bind(GameAudioHub audioHub) => hub = audioHub;
+        public static void Unbind() => hub = null;
 
         public static void PlayScannerStart(Vector3 position) => hub?.Play(GameAudioHub.Cue.ScannerStart, position);
         public static void PlayScannerProgress(Vector3 position, float t01) => hub?.PlayProgress(position, t01);

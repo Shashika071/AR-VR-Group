@@ -261,6 +261,10 @@ namespace ReefExplorer.UI
             rows.Add(Make("sample", sampleNeed > 0 && sampleDone >= sampleNeed,
                 "Water sample  " + sampleDone + "/" + sampleNeed,
                 "Pick up the blue bottle, stand in a sample circle, press E, and wait for the bar."));
+            var samplesTested = sampleNeed > 0 && sampleDone >= sampleNeed &&
+                                mc.DiveLog.perSiteSamples.TrueForAll(s => s == null || !s.collected || s.analysed);
+            rows.Add(Make("analyser", samplesTested, "Analyser",
+                "Pick up the analyser on the table and press E. A bar fills, then the water test appears."));
             rows.Add(Make("box", ReefExplorer.Interaction.SampleReturnBox.IsDeposited, "Sample box",
                 "After every water sample, put the bottle in the box on the table and press E."));
             rubbishNeed = Mathf.Max(0, rubbishNeed - ReefExplorer.Environment.ToxinFieldRuntime.HiddenRubbish);
