@@ -34,6 +34,48 @@ namespace ReefExplorer.Interaction
             StartCoroutine(UncoverRubbish());
             UpgradeHazards();
             UpgradeRecommendationMarker();
+            StartCoroutine(LabelTableTools());
+        }
+
+        IEnumerator LabelTableTools()
+        {
+            for (var i = 0; i < 8; i++)
+                yield return null;
+
+            var root = new GameObject("TableNameLabels");
+            NameTool(root.transform, "PowerCell", "BUOY BATTERY", 0.05f);
+            NameTool(root.transform, "Scanner", "SCANNER", 0.05f);
+            NameTool(root.transform, "SampleBottle", "BOTTLE", 0.05f);
+            NameTool(root.transform, "ToxinDisposalTool", "TOXIN TOOL", 0.05f);
+            NameTool(root.transform, "RecommendationMarker", "MARKER", 0.22f);
+            NameTool(root.transform, "SampleAnalyser", "ANALYSER", 0.22f);
+            NameTool(root.transform, "SampleCrate", "SAMPLE BOX", 0.22f);
+            NameTool(root.transform, "VehiclePowerPack_1", "CRAFT BATTERY", 0.22f);
+        }
+
+        static void NameTool(Transform root, string objectName, string caption, float lift)
+        {
+            Transform owner = null;
+            foreach (var tr in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (tr != null && tr.name == objectName)
+                {
+                    owner = tr;
+                    break;
+                }
+            }
+
+            if (owner == null)
+                return;
+
+            for (var i = owner.childCount - 1; i >= 0; i--)
+            {
+                var child = owner.GetChild(i);
+                if (child.name.StartsWith("Label_"))
+                    Destroy(child.gameObject);
+            }
+
+            TableNameTag.Create(root, owner, caption, lift);
         }
 
         static void UpgradeCoralSurveyPoints()
@@ -595,6 +637,113 @@ namespace ReefExplorer.Interaction
             mesh.color = Color.white;
             mesh.fontStyle = FontStyle.Bold;
             label.AddComponent<BillboardLabel>();
+            label.AddComponent<HideLabelWhenHeld>();
+        }
+    }
+
+    /// <summary>Same-size name above a table tool. Hidden while that tool is held.</summary>
+    sealed class TableNameTag : MonoBehaviour
+    {
+        const float CharacterSize = 0.013f;
+
+        Transform target;
+        Renderer textRenderer;
+        float lift;
+        static ReefExplorer.Input.DesktopPlayerController player;
+
+        public static void Create(Transform root, Transform target, string caption, float lift)
+        {
+            var go = new GameObject("Name_" + caption);
+            go.transform.SetParent(root, false);
+            var mesh = go.AddComponent<TextMesh>();
+            mesh.text = caption;
+            mesh.characterSize = CharacterSize;
+            mesh.fontSize = 32;
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.alignment = TextAlignment.Center;
+            mesh.color = Color.white;
+            mesh.fontStyle = FontStyle.Bold;
+            go.AddComponent<BillboardLabel>();
+            var tag = go.AddComponent<TableNameTag>();
+            tag.target = target;
+            tag.lift = lift;
+            tag.textRenderer = go.GetComponent<Renderer>();
+        }
+
+        void LateUpdate()
+        {
+            if (textRenderer == null)
+                return;
+            if (target == null || !target.gameObject.activeInHierarchy || IsHeld(target))
+            {
+                textRenderer.enabled = false;
+                return;
+            }
+
+            textRenderer.enabled = true;
+            var top = target.position.y;
+            var center = target.position;
+            var found = false;
+            foreach (var renderer in target.GetComponentsInChildren<Renderer>())
+            {
+                if (renderer == null || renderer is TextMesh || !renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                    continue;
+                if (renderer.bounds.size.y > 1.2f)
+                    continue;
+                if (!found || renderer.bounds.max.y > top)
+                {
+                    top = renderer.bounds.max.y;
+                    center = renderer.bounds.center;
+                    found = true;
+                }
+            }
+
+            transform.position = new Vector3(center.x, top + lift, center.z);
+            transform.localScale = Vector3.one;
+        }
+
+        static bool IsHeld(Transform owner)
+        {
+            if (player == null)
+                player = FindAnyObjectByType<ReefExplorer.Input.DesktopPlayerController>();
+            var inHand = player != null ? player.HeldObject : null;
+            if (inHand != null && (inHand == owner || owner.IsChildOf(inHand)))
+                return true;
+            var grab = owner.GetComponent<XRGrabInteractable>();
+            return grab != null && grab.isSelected;
+        }
+    }
+
+    /// <summary>World name stays visible on the table and hides while the tool is in hand.</summary>
+    sealed class HideLabelWhenHeld : MonoBehaviour
+    {
+        Renderer textRenderer;
+        Transform owner;
+        XRGrabInteractable grab;
+        static ReefExplorer.Input.DesktopPlayerController player;
+
+        void Awake()
+        {
+            textRenderer = GetComponent<Renderer>();
+            owner = transform.parent;
+            if (owner != null)
+                grab = owner.GetComponent<XRGrabInteractable>();
+        }
+
+        void LateUpdate()
+        {
+            if (textRenderer == null)
+                return;
+            if (player == null)
+                player = FindAnyObjectByType<ReefExplorer.Input.DesktopPlayerController>();
+
+            var held = grab != null && grab.isSelected;
+            var inHand = player != null ? player.HeldObject : null;
+            if (!held && inHand != null && owner != null &&
+                (inHand == owner || owner.IsChildOf(inHand)))
+                held = true;
+
+            textRenderer.enabled = !held;
         }
     }
 

@@ -20,6 +20,8 @@ namespace ReefExplorer.UI
 
         RectTransform panel;
         Text body;
+        Text hintText;
+        string hintLine = "";
         bool open;
         int selected;
         readonly System.Collections.Generic.List<TaskRow> rows = new();
@@ -46,6 +48,8 @@ namespace ReefExplorer.UI
             if (Keyboard.current.bKey.wasPressedThisFrame)
             {
                 open = !open;
+                if (!open)
+                    hintLine = "";
                 if (panel != null)
                     panel.gameObject.SetActive(open);
             }
@@ -70,7 +74,7 @@ namespace ReefExplorer.UI
             if (open && rows.Count > 0)
             {
                 selected = Mathf.Clamp(selected, 0, rows.Count - 1);
-                MissionEvents.RaiseFeedback(rows[selected].hint);
+                hintLine = rows[selected].hint;
                 return;
             }
 
@@ -111,11 +115,11 @@ namespace ReefExplorer.UI
             panel = root.AddComponent<RectTransform>();
             panel.anchorMin = panel.anchorMax = new Vector2(0f, 1f);
             panel.pivot = new Vector2(0f, 1f);
-            panel.anchoredPosition = new Vector2(16f, -44f);
-            panel.sizeDelta = new Vector2(520f, 720f);
+            panel.anchoredPosition = new Vector2(16f, -56f);
+            panel.sizeDelta = new Vector2(560f, 640f);
 
             var back = root.AddComponent<Image>();
-            back.color = new Color(0.02f, 0.08f, 0.1f, 0.92f);
+            back.color = new Color(0.02f, 0.05f, 0.08f, 1f);
             back.sprite = White();
 
             var textGo = new GameObject("Body");
@@ -123,8 +127,8 @@ namespace ReefExplorer.UI
             var textRect = textGo.AddComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(8f, 6f);
-            textRect.offsetMax = new Vector2(-8f, -6f);
+            textRect.offsetMin = new Vector2(16f, 96f);
+            textRect.offsetMax = new Vector2(-16f, -16f);
             body = textGo.AddComponent<Text>();
             body.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             body.fontSize = 28;
@@ -134,6 +138,43 @@ namespace ReefExplorer.UI
             body.color = Color.white;
             body.horizontalOverflow = HorizontalWrapMode.Wrap;
             body.verticalOverflow = VerticalWrapMode.Overflow;
+            var bodyOutline = body.gameObject.AddComponent<Outline>();
+            bodyOutline.effectColor = Color.black;
+            bodyOutline.effectDistance = new Vector2(1.4f, -1.4f);
+
+            var hintBar = new GameObject("HintBar");
+            hintBar.transform.SetParent(root.transform, false);
+            var barRect = hintBar.AddComponent<RectTransform>();
+            barRect.anchorMin = new Vector2(0f, 0f);
+            barRect.anchorMax = new Vector2(1f, 0f);
+            barRect.pivot = new Vector2(0.5f, 0f);
+            barRect.anchoredPosition = new Vector2(0f, 8f);
+            barRect.sizeDelta = new Vector2(-16f, 84f);
+            var barImage = hintBar.AddComponent<Image>();
+            barImage.color = new Color(0.08f, 0.22f, 0.28f, 1f);
+            barImage.sprite = White();
+
+            var hintGo = new GameObject("Hint");
+            hintGo.transform.SetParent(hintBar.transform, false);
+            var hintRect = hintGo.AddComponent<RectTransform>();
+            hintRect.anchorMin = Vector2.zero;
+            hintRect.anchorMax = Vector2.one;
+            hintRect.offsetMin = new Vector2(12f, 8f);
+            hintRect.offsetMax = new Vector2(-12f, -8f);
+            hintText = hintGo.AddComponent<Text>();
+            hintText.font = body.font;
+            hintText.fontSize = 24;
+            hintText.fontStyle = FontStyle.Bold;
+            hintText.alignment = TextAnchor.UpperLeft;
+            hintText.color = Color.white;
+            hintText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            hintText.verticalOverflow = VerticalWrapMode.Overflow;
+            var hintOutline = hintGo.AddComponent<Outline>();
+            hintOutline.effectColor = Color.black;
+            hintOutline.effectDistance = new Vector2(1.2f, -1.2f);
+            hintText.text = "";
+            hintBar.SetActive(false);
+            hintBar.transform.SetSiblingIndex(root.transform.childCount - 1);
 
             panel.gameObject.SetActive(false);
         }
@@ -242,11 +283,22 @@ namespace ReefExplorer.UI
             if (selected >= rows.Count)
                 selected = 0;
 
+            if (!string.IsNullOrEmpty(hintLine) && rows.Count > 0)
+                hintLine = rows[Mathf.Clamp(selected, 0, rows.Count - 1)].hint;
+
             var lines = "OBJECT LIST\n";
             for (var i = 0; i < rows.Count; i++)
                 lines += Row(rows[i].done, rows[i].label, i == selected);
-            lines += "\nUp Down pick\nH hint    B close";
+            lines += "\nUp Down pick    H hint    B close";
             body.text = lines;
+            var hintOpen = !string.IsNullOrEmpty(hintLine);
+            body.rectTransform.offsetMin = new Vector2(16f, hintOpen ? 96f : 16f);
+            if (hintText != null)
+            {
+                hintText.text = hintLine;
+                hintText.transform.parent.gameObject.SetActive(hintOpen);
+            }
+            panel.sizeDelta = new Vector2(560f, 78f + rows.Count * 34f + (hintOpen ? 88f : 28f));
         }
 
         static TaskRow Make(string id, bool done, string label, string hint)
@@ -258,7 +310,7 @@ namespace ReefExplorer.UI
         {
             var mark = picked ? "> " : "  ";
             var box = done ? "[x]  " : "[ ]  ";
-            var color = done ? "#7dff9a" : "#ffd27a";
+            var color = done ? "#b6ff72" : "#ffe14a";
             if (picked)
                 color = "#ffffff";
             return "<color=" + color + ">" + mark + box + label + "</color>\n";
