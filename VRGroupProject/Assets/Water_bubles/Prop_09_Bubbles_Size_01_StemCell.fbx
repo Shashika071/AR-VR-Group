@@ -1,6 +1,6 @@
 ; FBX 7.4.0 project file
 ; ----------------------------------------------------
-
+; Initializes the main AR-VR environment settings
 FBXHeaderExtension:  {
 	FBXHeaderVersion: 1003
 	FBXVersion: 7400
